@@ -91,54 +91,42 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
 
   const eliminarCliente = async () => {
     if (!cliente) return
-    let activo = cliente.activo
-
-    if(activo == true){
-      try {
-        await axios.patch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente.id}`,
-          { activo: false },
-          { withCredentials: true }
-        )
-        onSuccess('Cliente inactivado correctamente')
-        onClose()
-      } catch (e: unknown) {
-        let mensajeError = 'Error al eliminar cliente';
-      
-        if (typeof e === 'object' && e !== null && 'response' in e) {
-          const err = e as { response?: { data?: { message?: string } } };
-          if (err.response?.data?.message) {
-            mensajeError = err.response.data.message;
-          }
-        } else if (e instanceof Error) {
-          mensajeError = e.message || mensajeError;
-        }
-      
-        setError(mensajeError);
+    const nuevoEstado = !cliente.activo
+    
+    try {
+  
+      await axios.patch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente.id}`,
+        { activo: nuevoEstado },
+        { withCredentials: true }
+      )
+  
+      onSuccess(
+        nuevoEstado
+          ? 'Cliente reactivado correctamente'
+          : 'Cliente inactivado correctamente'
+      )
+      onClose()
+    } catch (e: unknown) {
+      let mensajeError = nuevoEstado
+        ? 'Error al reactivar al cliente'
+        : 'Error al inactivar al cliente'
+  
+      if (e instanceof Error) {
+        mensajeError = e.message || mensajeError
+      } else if (
+        typeof e === 'object' &&
+        e !== null &&
+        'response' in e &&
+        (e as { response?: { data?: { message?: string } } }).response?.data
+          ?.message
+      ) {
+        mensajeError = (
+          e as { response?: { data?: { message?: string } } }
+        ).response!.data!.message!
       }
-    } else if(activo == false){
-      try {
-        await axios.patch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente.id}`,
-          { activo: true },
-          { withCredentials: true }
-        )
-        onSuccess('Cliente reactivado correctamente')
-        onClose()
-      } catch (e: unknown) {
-        let mensajeError = 'Error al modificar el estado del cliente';
-      
-        if (typeof e === 'object' && e !== null && 'response' in e) {
-          const err = e as { response?: { data?: { message?: string } } };
-          if (err.response?.data?.message) {
-            mensajeError = err.response.data.message;
-          }
-        } else if (e instanceof Error) {
-          mensajeError = e.message || mensajeError;
-        }
-      
-        setError(mensajeError);
-      }      
+  
+      setError(mensajeError)
     }
   }
 

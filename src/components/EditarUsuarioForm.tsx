@@ -102,55 +102,43 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
   }
 
   const eliminaUsuario = async () => {
-    if(!usuario) return
-    let activo = usuario.activo
-
-    if(activo == true){
-      try {
-        await axios.patch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/usuarios/${usuario.id}`,
-          { activo: false },
-          { withCredentials: true }
-        )
-        onSuccess('Usuario inactivado correctamente')
-        onClose()
-      } catch (e: unknown) {
-        let mensajeError = 'Error al inactivar al usuario.';
-      
-        if (typeof e === 'object' && e !== null && 'response' in e) {
-          const err = e as { response?: { data?: { message?: string } } };
-          if (err.response?.data?.message) {
-            mensajeError = err.response.data.message;
-          }
-        } else if (e instanceof Error) {
-          mensajeError = e.message || mensajeError;
-        }
-      
-        setError(mensajeError);
-      } 
-    } else if(activo == false){
-      try {
-        await axios.patch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/usuarios/${usuario.id}`,
-          { activo: true },
-          { withCredentials: true }
-        )
-        onSuccess('Usuario reactivado correctamente')
-        onClose()
-      } catch (e: unknown) {
-        let mensajeError = 'Error al reactivar al usuario.';
-      
-        if (typeof e === 'object' && e !== null && 'response' in e) {
-          const err = e as { response?: { data?: { message?: string } } };
-          if (err.response?.data?.message) {
-            mensajeError = err.response.data.message;
-          }
-        } else if (e instanceof Error) {
-          mensajeError = e.message || mensajeError;
-        }
-      
-        setError(mensajeError);
-      }       
+    if (!usuario) return
+  
+    const nuevoEstado = !usuario.activo
+  
+    try {
+      await axios.patch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/usuarios/${usuario.id}`,
+        { activo: nuevoEstado },
+        { withCredentials: true }
+      )
+  
+      onSuccess(
+        nuevoEstado
+          ? 'Usuario reactivado correctamente'
+          : 'Usuario inactivado correctamente'
+      )
+      onClose()
+    } catch (e: unknown) {
+      let mensajeError = nuevoEstado
+        ? 'Error al reactivar al usuario.'
+        : 'Error al inactivar al usuario.'
+  
+      if (e instanceof Error) {
+        mensajeError = e.message || mensajeError
+      } else if (
+        typeof e === 'object' &&
+        e !== null &&
+        'response' in e &&
+        (e as { response?: { data?: { message?: string } } }).response?.data
+          ?.message
+      ) {
+        mensajeError = (
+          e as { response?: { data?: { message?: string } } }
+        ).response!.data!.message!
+      }
+  
+      setError(mensajeError)
     }
   }
 

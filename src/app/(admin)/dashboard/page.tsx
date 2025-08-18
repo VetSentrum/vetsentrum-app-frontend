@@ -6,14 +6,6 @@ import axios from 'axios';
 
 type Rol = 'admin' | 'veterinario' | 'recepcion' | string
 
-interface DecodedToken {
-  sub: string
-  nombre: string
-  rol: Rol
-  iat: number
-  exp: number
-}
-
 export default function DashboardPage() {
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
