@@ -1,36 +1,34 @@
-// src/app/definir-contrasena/DefinirContrasenaForm.tsx
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
-
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
-const schema = z
-  .object({
-    contraseña: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
-    confirmarContraseña: z.string(),
-  })
-  .refine((data) => data.contraseña === data.confirmarContraseña, {
-    message: 'Las contraseñas no coinciden',
-    path: ['confirmarContraseña'],
-  })
+// Validación de formulario
+const schema = z.object({
+  contraseña: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  confirmarContraseña: z.string(),
+}).refine(data => data.contraseña === data.confirmarContraseña, {
+  message: 'Las contraseñas no coinciden',
+  path: ['confirmarContraseña'],
+})
 
 type FormData = z.infer<typeof schema>
 
 export default function DefinirContrasenaForm() {
   const searchParams = useSearchParams()
-  const token = searchParams.get('token') || ''
   const router = useRouter()
+  const token = searchParams.get('token') || ''
 
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
   const form = useForm<FormData>({ resolver: zodResolver(schema), mode: 'onTouched' })
 
   async function onSubmit(data: FormData) {
@@ -40,17 +38,20 @@ export default function DefinirContrasenaForm() {
     try {
       await axios.patch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/usuarios/definir-contrasena`, {
         token,
-        nuevaContrasena: data.contraseña,
+        nuevaContrasena: data.contraseña
       })
       setMensaje('Contraseña guardada correctamente. Puedes iniciar sesión.')
       setTimeout(() => router.push('/login'), 3000)
     } catch (e: unknown) {
       let mensajeError = 'Error inesperado. Intenta de nuevo.'
-      if (e instanceof Error) mensajeError = e.message
-      else if (typeof e === 'object' && e !== null && 'response' in e) {
+
+      if (e instanceof Error) {
+        mensajeError = e.message
+      } else if (typeof e === 'object' && e !== null && 'response' in e) {
         const err = e as { response?: { data?: { message?: string } } }
         mensajeError = err.response?.data?.message || mensajeError
       }
+
       setError(
         mensajeError === 'Token inválido'
           ? 'El enlace no es válido. Solicita uno nuevo.'
@@ -67,33 +68,21 @@ export default function DefinirContrasenaForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-          <FormField
-            control={form.control}
-            name="contraseña"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nueva contraseña</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="********" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <FormField control={form.control} name="contraseña" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nueva contraseña</FormLabel>
+              <FormControl><Input type="password" placeholder="********" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-          <FormField
-            control={form.control}
-            name="confirmarContraseña"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirmar contraseña</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="********" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <FormField control={form.control} name="confirmarContraseña" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirmar contraseña</FormLabel>
+              <FormControl><Input type="password" placeholder="********" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
           <Button type="submit" className="w-full mt-4">Guardar</Button>
         </form>
