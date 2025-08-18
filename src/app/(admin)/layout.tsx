@@ -38,7 +38,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <div className="flex h-screen">
       {/* Barra lateral */}
       <aside className="w-48 bg-gray-900 text-white flex flex-col p-4">
-        <h1 className="text-2xl font-bold mb-8">Vet'Sentrum</h1>
+        <h1 className="text-2xl font-bold mb-8">Vet&apos;Sentrum</h1>
         <nav className="flex flex-col gap-4">
           <a href="/dashboard" className="p-3 rounded-lg hover:bg-gray-800">Dashboard</a>
 

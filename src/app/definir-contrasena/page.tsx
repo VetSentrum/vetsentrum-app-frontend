@@ -66,7 +66,7 @@ export default function DefinirContrasenaPage() {
             : e.message || 'Error inesperado. Intenta de nuevo.'
         );
       } else if (typeof e === 'object' && e !== null && 'response' in e) {
-        const err = e as any;
+        const err = e as { response?: { data?: { message?: string } } };
         setError(
           err.response?.data?.message === 'Token inválido'
             ? 'El enlace no es válido. Solicita uno nuevo.'
@@ -77,7 +77,7 @@ export default function DefinirContrasenaPage() {
       } else {
         setError('Error inesperado. Intenta de nuevo.');
       }
-    }
+    }    
   }
 
   return (
