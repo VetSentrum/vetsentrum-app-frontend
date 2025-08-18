@@ -70,8 +70,19 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
         setMensaje('Usuario creado correctamente. Se ha enviado un correo de activación de cuenta.')
       }
 
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Error al actualizar')
+    } catch (e: unknown) {
+      let mensajeError = 'Error al actualizar';
+    
+      if (typeof e === 'object' && e !== null && 'response' in e) {
+        const err = e as { response?: { data?: { message?: string } } };
+        if (err.response?.data?.message) {
+          mensajeError = err.response.data.message;
+        }
+      } else if (e instanceof Error) {
+        mensajeError = e.message || mensajeError;
+      }
+    
+      setError(mensajeError);
     }
   }
 
@@ -85,8 +96,8 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
         { withCredentials: true }
       )
       setMensaje('Correo de restablecimiento enviado')
-    } catch (e: any) {
-      setError('Error al enviar el correo')
+    } catch (e: unknown) {
+      setError('Error al enviar el correo');
     }
   }
 
@@ -103,9 +114,20 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
         )
         onSuccess('Usuario inactivado correctamente')
         onClose()
-      } catch (e: any){
-        setError(e.response?.data?.message || 'Error al inactivar al usuario.')
-      }
+      } catch (e: unknown) {
+        let mensajeError = 'Error al inactivar al usuario.';
+      
+        if (typeof e === 'object' && e !== null && 'response' in e) {
+          const err = e as { response?: { data?: { message?: string } } };
+          if (err.response?.data?.message) {
+            mensajeError = err.response.data.message;
+          }
+        } else if (e instanceof Error) {
+          mensajeError = e.message || mensajeError;
+        }
+      
+        setError(mensajeError);
+      } 
     } else if(activo == false){
       try {
         await axios.patch(
@@ -115,9 +137,20 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
         )
         onSuccess('Usuario reactivado correctamente')
         onClose()
-      } catch (e: any){
-        setError(e.response?.data?.message || 'Error al reactivar al usuario.')
-      }
+      } catch (e: unknown) {
+        let mensajeError = 'Error al reactivar al usuario.';
+      
+        if (typeof e === 'object' && e !== null && 'response' in e) {
+          const err = e as { response?: { data?: { message?: string } } };
+          if (err.response?.data?.message) {
+            mensajeError = err.response.data.message;
+          }
+        } else if (e instanceof Error) {
+          mensajeError = e.message || mensajeError;
+        }
+      
+        setError(mensajeError);
+      }       
     }
   }
 

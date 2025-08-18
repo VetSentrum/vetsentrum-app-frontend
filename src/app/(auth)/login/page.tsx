@@ -36,11 +36,16 @@ export default function LoginPage() {
           if (res.data) {
             router.push('/dashboard');
           }
-        } catch (err: any) {
-          if (err.response?.status !== 401) {
-            console.error("Error inesperado al validar sesión:", err);
+        } catch (err: unknown) {
+          if (typeof err === 'object' && err !== null && 'response' in err) {
+            const e = err as { response?: { status?: number } };
+            if (e.response?.status !== 401) {
+              console.error('Error inesperado al validar sesión:', err);
+            }
+          } else {
+            console.error('Error inesperado al validar sesión:', err);
           }
-        }
+        }        
       };
     
       validarSesion();
@@ -66,13 +71,22 @@ export default function LoginPage() {
       )
   
       router.push('/dashboard')
-    } catch (e: any) {
-      console.error('Error al iniciar sesión:', e)
-      setError(
-        e.response?.data?.message ||
-        'Error al iniciar sesión. Revisa tus credenciales.'
-      )
-    }
+    } catch (e: unknown) {
+      console.error('Error al iniciar sesión:', e);
+    
+      let mensajeError = 'Error al iniciar sesión. Revisa tus credenciales.';
+    
+      if (e instanceof Error) {
+        mensajeError = e.message || mensajeError;
+      } else if (typeof e === 'object' && e !== null && 'response' in e) {
+        const err = e as { response?: { data?: { message?: string } } };
+        if (err.response?.data?.message) {
+          mensajeError = err.response.data.message;
+        }
+      }
+    
+      setError(mensajeError);
+    }    
   }
 
   return (

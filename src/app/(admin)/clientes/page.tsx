@@ -18,7 +18,7 @@ interface Cliente {
   telefono: string;
   email?: string;
   direccion?: string;
-  activo: Boolean;
+  activo: boolean;
   mascotas: Mascota[];
 }
 

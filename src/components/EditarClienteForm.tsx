@@ -27,7 +27,7 @@ interface Cliente {
   telefono: string
   email?: string
   direccion?: string
-  activo: Boolean
+  activo: boolean
 }
 
 interface Props {
@@ -73,8 +73,19 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
       }
       onSuccess(mensaje || 'Operación exitosa')
       onClose()
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Error al guardar cliente')
+    } catch (e: unknown) {
+      let mensajeError = 'Error al guardar cliente';
+    
+      if (typeof e === 'object' && e !== null && 'response' in e) {
+        const err = e as { response?: { data?: { message?: string } } };
+        if (err.response?.data?.message) {
+          mensajeError = err.response.data.message;
+        }
+      } else if (e instanceof Error) {
+        mensajeError = e.message || mensajeError;
+      }
+    
+      setError(mensajeError);
     }
   }
 
@@ -91,8 +102,19 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
         )
         onSuccess('Cliente inactivado correctamente')
         onClose()
-      } catch (e: any) {
-        setError(e.response?.data?.message || 'Error al eliminar cliente')
+      } catch (e: unknown) {
+        let mensajeError = 'Error al eliminar cliente';
+      
+        if (typeof e === 'object' && e !== null && 'response' in e) {
+          const err = e as { response?: { data?: { message?: string } } };
+          if (err.response?.data?.message) {
+            mensajeError = err.response.data.message;
+          }
+        } else if (e instanceof Error) {
+          mensajeError = e.message || mensajeError;
+        }
+      
+        setError(mensajeError);
       }
     } else if(activo == false){
       try {
@@ -103,9 +125,20 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
         )
         onSuccess('Cliente reactivado correctamente')
         onClose()
-      } catch (e: any) {
-        setError(e.response?.data?.message || 'Error al modificar el estado del cliente')
-      }
+      } catch (e: unknown) {
+        let mensajeError = 'Error al modificar el estado del cliente';
+      
+        if (typeof e === 'object' && e !== null && 'response' in e) {
+          const err = e as { response?: { data?: { message?: string } } };
+          if (err.response?.data?.message) {
+            mensajeError = err.response.data.message;
+          }
+        } else if (e instanceof Error) {
+          mensajeError = e.message || mensajeError;
+        }
+      
+        setError(mensajeError);
+      }      
     }
   }
 

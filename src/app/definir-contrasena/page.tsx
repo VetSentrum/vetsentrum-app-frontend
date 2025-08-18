@@ -56,14 +56,27 @@ export default function DefinirContrasenaPage() {
       )
       setMensaje('Contraseña guardada correctamente. Puedes iniciar sesión.')
       setTimeout(() => router.push('/login'), 3000)
-    } catch (e: any) {
-      setError(
-        e.response?.data?.message === 'Token inválido'
-          ? 'El enlace no es válido. Solicita uno nuevo.'
-          : e.response?.data?.message === 'Token expirado'
-          ? 'El enlace ha expirado. Solicita uno nuevo.'
-          : e.response?.data?.message || 'Error inesperado. Intenta de nuevo.'
-      );
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(
+          e.message === 'Token inválido'
+            ? 'El enlace no es válido. Solicita uno nuevo.'
+            : e.message === 'Token expirado'
+            ? 'El enlace ha expirado. Solicita uno nuevo.'
+            : e.message || 'Error inesperado. Intenta de nuevo.'
+        );
+      } else if (typeof e === 'object' && e !== null && 'response' in e) {
+        const err = e as any;
+        setError(
+          err.response?.data?.message === 'Token inválido'
+            ? 'El enlace no es válido. Solicita uno nuevo.'
+            : err.response?.data?.message === 'Token expirado'
+            ? 'El enlace ha expirado. Solicita uno nuevo.'
+            : err.response?.data?.message || 'Error inesperado. Intenta de nuevo.'
+        );
+      } else {
+        setError('Error inesperado. Intenta de nuevo.');
+      }
     }
   }
 

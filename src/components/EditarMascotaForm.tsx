@@ -104,8 +104,19 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
       }
       onSuccess(mensaje || 'Operación exitosa')
       onClose()
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Error al guardar mascota')
+    } catch (e: unknown) {
+      let mensajeError = 'Error al guardar mascota';
+    
+      if (typeof e === 'object' && e !== null && 'response' in e) {
+        const err = e as { response?: { data?: { message?: string } } };
+        if (err.response?.data?.message) {
+          mensajeError = err.response.data.message;
+        }
+      } else if (e instanceof Error) {
+        mensajeError = e.message || mensajeError;
+      }
+    
+      setError(mensajeError);
     }
   }
 
