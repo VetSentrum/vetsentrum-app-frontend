@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Nuestro compromiso... salvar vidas",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center justify-center h-screen bg-gray-50">
