@@ -113,6 +113,7 @@ export default function MascotasPage() {
           <tbody className="divide-y">
             {mascotasPaginadas.map((mascota) => (
               <tr key={mascota.id} className="border-t">
+                <td className="p-2">{mascota.expediente}</td>
                 <td className="p-2">{mascota.nombre}</td>
                 <td className="p-2">{mascota.especie}</td>
                 <td className="p-2">{mascota.raza}</td>
