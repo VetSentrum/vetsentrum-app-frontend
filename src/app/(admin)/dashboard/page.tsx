@@ -25,6 +25,7 @@ export default function DashboardPage() {
       })
       .catch((err) => {
         console.error('Token inválido:', err);
+        alert('Token inválido')
         router.push('/login');
       });
   }, [])

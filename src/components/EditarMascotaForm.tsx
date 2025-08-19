@@ -15,6 +15,7 @@ import {
 
 const schema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
+  expediente: z.number().int(),
   especie: z.string().min(1, 'La especie es obligatoria'),
   raza: z.string().min(1, 'La raza es obligatoria'),
   sexo: z.enum(['Macho', 'Hembra']),
@@ -33,6 +34,7 @@ interface Cliente {
 
 interface Mascota {
   id?: string
+  expediente: number
   nombre: string
   especie: string
   raza: string
@@ -123,6 +125,23 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+        <FormField
+          control={form.control}
+          name="expediente"
+          render={() => (
+            <FormItem>
+              <FormLabel>#EXP</FormLabel>
+              <FormControl>
+                <input
+                  type="text"
+                  value={mascota?.expediente || '—'}
+                  disabled
+                  className="border rounded px-3 py-2 w-full bg-gray-100 text-gray-600"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="nombre"

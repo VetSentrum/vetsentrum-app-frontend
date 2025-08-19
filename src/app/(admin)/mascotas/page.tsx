@@ -9,6 +9,7 @@ import { EditarMascotaForm } from '@/components/EditarMascotaForm';
 
 interface Mascota {
   id: string;
+  expediente: number;
   nombre: string;
   especie: string;
   raza: string;
@@ -99,6 +100,7 @@ export default function MascotasPage() {
         <table className="min-w-full border-collapse table-auto">
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
+              <th className="text-left p-2 border-b">#EXP</th>
               <th className="text-left p-2 border-b">Nombre</th>
               <th className="text-left p-2 border-b">Especie</th>
               <th className="text-left p-2 border-b">Raza</th>
