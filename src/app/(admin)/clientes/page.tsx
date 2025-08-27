@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { EditarClienteForm } from '@/components/EditarClienteForm';
@@ -24,6 +24,7 @@ interface Cliente {
 
 export default function ClientesPage() {
   const router                                        = useRouter();
+  const searchParams                                  = useSearchParams();
   const [clientes, setClientes]                       = useState<Cliente[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [modalAbierto, setModalAbierto]               = useState(false);
