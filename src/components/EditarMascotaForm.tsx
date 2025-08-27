@@ -15,7 +15,7 @@ import {
 
 const schema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
-  especie: z.string().min(1, 'La especie es obligatoria'),
+  especie_id: z.number().int({ message : 'La especie es obligatoria' }),
   raza: z.string().min(1, 'La raza es obligatoria'),
   sexo: z.enum(['Macho', 'Hembra']),
   edad_aproximada: z.number().int().optional(),
@@ -31,11 +31,16 @@ interface Cliente {
   nombre_completo: string
 }
 
+interface Especie {
+  id: number
+  nombre: string
+}
+
 interface Mascota {
   id?: string
   nombre: string
   expediente?: number
-  especie: string
+  especie_id: number
   raza: string
   sexo: 'Macho' | 'Hembra'
   edad_aproximada?: number
@@ -54,12 +59,13 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [especies, setEspecies] = useState<Especie[]>([])
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
+    defaultValues: {  
       nombre: mascota?.nombre || '',
-      especie: mascota?.especie || '',
+      especie_id: mascota?.especie_id || 0,
       raza: mascota?.raza || '',
       sexo: mascota?.sexo || 'Macho',
       edad_aproximada: mascota?.edad_aproximada || 0,
@@ -82,6 +88,21 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
       }
     }
     cargarClientes()
+  }, [])
+
+  useEffect(() => {
+    const cargarEspecies = async () => {
+      try {
+        const { data } = await axios.get<Especie[]>(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/especies`,
+          { withCredentials: true }
+        )
+        setEspecies(data)
+      } catch (e) {
+        console.error('Error cargando especies', e)
+      }
+    }
+    cargarEspecies()
   }, [])
 
   const onSubmit = async (data: FormData) => {
@@ -151,12 +172,26 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
 
         <FormField
           control={form.control}
-          name="especie"
+          name="especie_id"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Especie</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Select
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  value={field.value ? String(field.value) : ''}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una especie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {especies.map(e => (
+                      <SelectItem key={e.id} value={String(e.id)}>
+                        {e.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>

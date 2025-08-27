@@ -11,7 +11,8 @@ interface Mascota {
   id: string;
   expediente: number;
   nombre: string;
-  especie: string;
+  especie_id: number;
+  especie?: { id: number; nombre: string };
   raza: string;
   sexo: 'Macho' | 'Hembra';
   edad_aproximada: number;
@@ -65,8 +66,8 @@ export default function MascotasPage() {
 
   const mascotasFiltradas = mascotas.filter(m =>
     m.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    m.especie.toLowerCase().includes(busqueda.toLowerCase()) ||
-    m.raza.toLowerCase().includes(busqueda.toLowerCase())
+    m.raza.toLowerCase().includes(busqueda.toLowerCase()) ||
+    m.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   const totalPaginas = Math.ceil(mascotasFiltradas.length / porPagina);
@@ -115,7 +116,7 @@ export default function MascotasPage() {
               <tr key={mascota.id} className="border-t">
                 <td className="p-2">{mascota.expediente}</td>
                 <td className="p-2">{mascota.nombre}</td>
-                <td className="p-2">{mascota.especie}</td>
+                <td className="p-2">{mascota.especie?.nombre ?? 'Desconocido'}</td>
                 <td className="p-2">{mascota.raza}</td>
                 <td className="p-2">
                   {mascota.edad_aproximada

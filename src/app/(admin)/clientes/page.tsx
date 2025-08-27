@@ -53,6 +53,16 @@ export default function ClientesPage() {
     cargarClientes();
   }, [cargarClientes]);
 
+  useEffect(() => {
+    const clienteId = searchParams.get('cliente');
+    if (clienteId) {
+      const cliente = clientes.find(c => c.id === clienteId);
+      if (cliente) {
+        abrirModal(cliente);
+      }
+    }
+  }, [searchParams, clientes]);
+
   const abrirModal = (cliente: Cliente | null) => {
     setClienteSeleccionado(cliente);
     setModalAbierto(true);
