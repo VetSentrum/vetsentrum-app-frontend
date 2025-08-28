@@ -55,14 +55,15 @@ export default function ClientesPage() {
   }, [cargarClientes]);
 
   useEffect(() => {
-    const clienteId = searchParams.get('cliente');
-    if (clienteId) {
-      const cliente = clientes.find(c => c.id === clienteId);
-      if (cliente) {
-        abrirModal(cliente);
+    if (!loading) {
+      const clienteId = searchParams.get('cliente');
+      if (clienteId) {
+        const cliente = clientes.find(c => c.id === clienteId);
+        if (cliente) abrirModal(cliente);
       }
     }
-  }, [searchParams, clientes]);
+  }, [searchParams, clientes, loading]);
+  
 
   const abrirModal = (cliente: Cliente | null) => {
     setClienteSeleccionado(cliente);

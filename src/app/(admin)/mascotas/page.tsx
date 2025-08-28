@@ -35,6 +35,8 @@ export default function MascotasPage() {
   const [loading, setLoading] = useState(true);
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(10);
+  const [sortField, setSortField] = useState<'expediente' | 'nombre' | 'cliente_nombre'>('expediente');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const cargarMascotas = useCallback(async () => {
     setLoading(true);
@@ -51,6 +53,15 @@ export default function MascotasPage() {
     }
   }, [clienteFiltro, router]);
 
+  const handleSort = (field: 'expediente' | 'nombre' | 'cliente_nombre') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   useEffect(() => {
     cargarMascotas();
   }, [cargarMascotas]);
@@ -64,14 +75,27 @@ export default function MascotasPage() {
     setMascotaSeleccionada(null);
   };
 
-  const mascotasFiltradas = mascotas.filter(m =>
-    m.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    m.raza.toLowerCase().includes(busqueda.toLowerCase()) ||
-    m.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+const mascotasFiltradas = mascotas.filter(m =>
+  (!clienteFiltro || m.cliente_id === clienteFiltro) &&
+  (m.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+  m.raza.toLowerCase().includes(busqueda.toLowerCase()) ||
+  m.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase()))
+);
 
-  const totalPaginas = Math.ceil(mascotasFiltradas.length / porPagina);
-  const mascotasPaginadas = mascotasFiltradas.slice((pagina - 1) * porPagina, pagina * porPagina);
+const mascotasOrdenadas = [...mascotasFiltradas].sort((a, b) => {
+  let valA: string | number = a[sortField] ?? '';
+  let valB: string | number = b[sortField] ?? '';
+
+  if (typeof valA === 'string') valA = valA.toLowerCase();
+  if (typeof valB === 'string') valB = valB.toLowerCase();
+
+  if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+  if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+  return 0;
+});
+
+const totalPaginas = Math.ceil(mascotasFiltradas.length / porPagina);
+const mascotasPaginadas = mascotasOrdenadas.slice((pagina - 1) * porPagina, pagina * porPagina);
 
   if (loading) return <p>Cargando mascotas...</p>;
 
@@ -80,13 +104,16 @@ export default function MascotasPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Mascotas</h1>
         <div className="flex gap-4">
-          <input
-            type="text"
-            placeholder="Buscar por nombre, especie o raza..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="border rounded px-3 py-1"
-          />
+        <input
+          type="text"
+          placeholder="Buscar cliente..."
+          value={busqueda}
+          onChange={(e) => {
+            setBusqueda(e.target.value);
+            setPagina(1);
+          }}
+          className="border rounded px-3 py-1"
+        />
           <Button onClick={() => abrirModal(null)}>Nueva Mascota</Button>
         </div>
       </div>
@@ -101,13 +128,19 @@ export default function MascotasPage() {
         <table className="min-w-full border-collapse table-auto">
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
-              <th className="text-left p-2 border-b">#EXP</th>
-              <th className="text-left p-2 border-b">Nombre</th>
+              <th className="cursor-pointer p-2 border-b" onClick={() => handleSort('expediente')}>
+                #EXP {sortField === 'expediente' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th className="cursor-pointer p-2 border-b" onClick={() => handleSort('nombre')}>
+                Nombre {sortField === 'nombre' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="text-left p-2 border-b">Especie</th>
               <th className="text-left p-2 border-b">Raza</th>
               <th className="text-left p-2 border-b">Edad</th>
               <th className="text-left p-2 border-b">Peso</th>
-              <th className="text-left p-2 border-b">Dueño</th>
+              <th className="cursor-pointer p-2 border-b" onClick={() => handleSort('cliente_nombre')}>
+                Dueño {sortField === 'cliente_nombre' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="text-left p-2 border-b">Acciones</th>
             </tr>
           </thead>
@@ -129,7 +162,6 @@ export default function MascotasPage() {
                     <button
                       className="text-blue-600 underline"
                       onClick={() => {
-                        // Aquí podrías abrir un modal de cliente pasando cliente_id
                         router.push(`/clientes?cliente=${mascota.cliente_id}`);
                       }}
                     >
@@ -178,21 +210,20 @@ export default function MascotasPage() {
       </div>
 
       <Dialog open={modalAbierto} onOpenChange={cerrarModal}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
-            <DialogTitle className='text-center font-medium'>
-              {mascotaSeleccionada ? 'Edición de Mascota' : 'Nueva Mascota'}
-            </DialogTitle>
-            <DialogDescription></DialogDescription>
+            <DialogTitle>{mascotaSeleccionada ? 'Editar Mascota' : 'Nueva Mascota'}</DialogTitle>
           </DialogHeader>
-          <EditarMascotaForm
-            mascota={mascotaSeleccionada ?? {} as Mascota}
-            onClose={cerrarModal}
-            onSuccess={(mensaje: string) => {
-              setMensajeGlobal(mensaje);
-              cargarMascotas();
-            }}
-          />
+          <div className="max-h-[80vh] overflow-y-auto pr-2">
+            <EditarMascotaForm
+              mascota={mascotaSeleccionada ?? {} as Mascota}
+              onClose={cerrarModal}
+              onSuccess={(mensaje: string) => {
+                setMensajeGlobal(mensaje);
+                cargarMascotas();
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </main>
