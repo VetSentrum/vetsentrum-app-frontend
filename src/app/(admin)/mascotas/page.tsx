@@ -64,6 +64,10 @@ export default function MascotasPage() {
     setMascotaSeleccionada(null);
   };
 
+  useEffect(() => {
+    setPagina(1);
+  }, [busqueda]);
+
   const mascotasFiltradas = mascotas.filter(m =>
     m.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     m.raza.toLowerCase().includes(busqueda.toLowerCase()) ||

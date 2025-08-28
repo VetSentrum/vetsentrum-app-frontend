@@ -64,6 +64,10 @@ export default function ClientesPage() {
     }
   }, [searchParams, clientes]);
 
+  useEffect(() => {
+    setPagina(1);
+  }, [busqueda]);
+
   const abrirModal = (cliente: Cliente | null) => {
     setClienteSeleccionado(cliente);
     setModalAbierto(true);
