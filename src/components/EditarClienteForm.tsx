@@ -5,9 +5,17 @@ import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { JSX } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from "@/components/ui/dialog"
 import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage
 } from '@/components/ui/form'
@@ -140,8 +148,11 @@ function parseDireccion(direccion?: string) {
 
 export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
   const [mensaje, setMensaje] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | JSX.Element | null>(null);
   const [coloniasFiltradas, setColoniasFiltradas] = useState<Colonia[]>([])
+  const [usuario, setUsuario] = useState<{ id: string; rol: "admin" | "recepcion" | "veterinario" } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const parsed = parseDireccion(cliente?.direccion)
   const necesitaActualizar = !parsed
@@ -189,16 +200,24 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
     }
   }, [cliente, form])
 
+  useEffect(() => {
+    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
+      .then(res => setUsuario(res.data))
+      .catch(() => setUsuario(null));
+  }, []);
+  const rolActual = usuario?.rol;
+
   const onSubmit = async (data: FormData) => {
     setError(null)
     setMensaje(null)
 
     try {
+      setGuardando(true);
       const direccion = `${data.calle || ''} ${data.numero || ''}, ${data.colonia || ''}, ${data.municipio || ''}. ${data.codigo_postal || ''}, Nuevo León`
 
       if (cliente) {
         await axios.patch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente.id}`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente.id}/`,
           { ...data, direccion },
           { withCredentials: true }
         )
@@ -227,37 +246,49 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
       }
 
       setError(mensajeError)
+    } finally {
+      setGuardando(false);
     }
   }
 
-  const eliminarCliente = async () => {
-    if (!cliente) return
-    const nuevoEstado = !cliente.activo
-
+  const toggleActivo = async (id: string, activo: boolean) => {
+    const nuevoEstado = !activo;
+  
     try {
+      setGuardando(true);
       await axios.patch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente.id}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${id}/${activo ? 'inactivar' : 'activar'}`,
         { activo: nuevoEstado },
         { withCredentials: true }
-      )
-
+      );
+  
       onSuccess(
         nuevoEstado
           ? 'Cliente reactivado correctamente'
           : 'Cliente inactivado correctamente'
-      )
-      onClose()
-    } catch (e: unknown) {
-      let mensajeError = nuevoEstado
-        ? 'Error al reactivar al cliente'
-        : 'Error al inactivar al cliente'
-
-      if (e instanceof Error) {
-        mensajeError = e.message || mensajeError
-      }
-
-      setError(mensajeError)
+      );
+      onClose();
+    } catch (e: any) {
+      setError(
+        nuevoEstado
+          ? e.response?.data?.message || 'Error al reactivar cliente'
+          : e.response?.data?.message || 'Error al inactivar cliente'
+      );
+    } finally {
+      setGuardando(false);
     }
+  };
+  
+  const eliminarCliente = async () => {
+    if (!cliente) return
+    const nuevoEstado = !cliente.activo
+
+    if (rolActual === "admin" && cliente.activo) {
+      setConfirmOpen(true);
+      return;
+    }
+
+    await toggleActivo(cliente.id, cliente.activo);
   }
 
   return (
@@ -404,7 +435,8 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
         )}/>
 
         <div className="flex items-center justify-between w-full">
-          <Button type="submit">Guardar cambios</Button>
+          {guardando ? <Button type="submit" disabled >Guardar cambios</Button> : <Button type="submit" >Guardar cambios</Button>}
+          
           {cliente && (
             <div className="flex items-end flex-col gap-1">
               <button
@@ -417,6 +449,67 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
             </div>
           )}
         </div>
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>¿Eliminar cliente también?</DialogTitle>
+              <DialogDescription>
+                También puede eliminar definitivamente el registro.
+                Eliminar el registro no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (cliente) {
+                    toggleActivo(cliente.id, cliente.activo);
+                  }
+                  setConfirmOpen(false);
+                }}
+              >
+                Sólo inactivar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  try {
+                    await axios.delete(
+                      `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${cliente?.id}`,
+                      { withCredentials: true }
+                    );
+                    onSuccess("Cliente eliminado definitivamente");
+                    onClose();
+                    setConfirmOpen(false);
+                  } catch (e: any) {
+                    setConfirmOpen(false);
+                  
+                    if (e.response?.data?.mascotas) {
+                      setError(
+                        <span>
+                          {e.response.data.message} Ejemplo:{" "}
+                          {e.response.data.mascotas.map((m: any) => m.nombre).join(", ")}.{" "}
+                          Puedes ver las{" "}
+                          <a
+                            href={`/mascotas?cliente=${cliente?.id}`}
+                            className="text-blue-600 underline"
+                          >
+                            mascotas aquí
+                          </a>
+                          .
+                        </span>
+                      );
+                    } else {
+                      setError(e.response?.data?.message || "Error al eliminar cliente");
+                    }
+                  }
+                }}
+              >
+                Eliminar definitivamente
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {mensaje && <p className="text-green-600">{mensaje}</p>}
         {error && <p className="text-red-600">{error}</p>}

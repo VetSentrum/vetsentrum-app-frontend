@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { EditarClienteForm } from '@/components/EditarClienteForm';
+import axios from 'axios';
 
 interface Mascota {
   id: string;
@@ -34,6 +34,7 @@ export default function ClientesPage() {
   const [loading, setLoading]                         = useState(true);
   const [pagina, setPagina]                           = useState(1);
   const [porPagina, setPorPagina]                     = useState(10);
+  const [usuario, setUsuario] = useState<{ id: string; rol: "admin" | "recepcion" | "veterinario" } | null>(null);
 
   const cargarClientes = useCallback(async () => {
     setLoading(true);
@@ -51,6 +52,12 @@ export default function ClientesPage() {
   }, [mostrarInactivos, router]);
 
   useEffect(() => {
+    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
+      .then(res => setUsuario(res.data))
+      .catch(() => setUsuario(null));
+  }, []);
+
+  useEffect(() => {
     cargarClientes();
   }, [cargarClientes]);
 
@@ -63,11 +70,12 @@ export default function ClientesPage() {
       }
     }
   }, [searchParams, clientes, loading]);
-  
 
   useEffect(() => {
     setPagina(1);
   }, [busqueda]);
+
+  const rolActual = usuario?.rol;
 
   const abrirModal = (cliente: Cliente | null) => {
     setClienteSeleccionado(cliente);
@@ -111,7 +119,9 @@ export default function ClientesPage() {
             Mostrar inactivos
           </label>
           
-          <Button onClick={() => abrirModal(null)}>Nuevo Cliente</Button>
+          {(rolActual === 'recepcion' || rolActual === 'admin') && (
+            <Button onClick={() => abrirModal(null)}>Nuevo Cliente</Button>
+          )}
         </div>
       </div>
 
@@ -148,7 +158,15 @@ export default function ClientesPage() {
                   </Button>
                 </td>
                 <td className="p-2 flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => abrirModal(cliente)}>Editar</Button>
+                  {/* Veterinario: botón deshabilitado */}
+                  {rolActual === 'veterinario' && (
+                    <Button variant="outline" size="sm" disabled>Editar</Button>
+                  )}
+
+                  {/* Recepción/Admin: pueden editar */}
+                  {(rolActual === 'recepcion' || rolActual === 'admin') && (
+                    <Button variant="outline" size="sm" onClick={() => abrirModal(cliente)}>Editar</Button>
+                  )}
                 </td>
               </tr>
             ))}

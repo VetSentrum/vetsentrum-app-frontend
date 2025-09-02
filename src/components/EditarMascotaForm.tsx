@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/form'
 
 const schema = z.object({
+  expediente: z.number().int().optional(),
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   especie_id: z.number().int({ message : 'La especie es obligatoria' }),
   raza: z.string().min(1, 'La raza es obligatoria'),
@@ -47,6 +48,7 @@ interface Mascota {
   esterilizado: boolean
   peso: number
   cliente_id: string
+  fecha_creacion: Date
 }
 
 interface Props {
@@ -58,8 +60,10 @@ interface Props {
 export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [error, setError] = useState<string | null>(null)
   const [especies, setEspecies] = useState<Especie[]>([])
+  const [usuario, setUsuario] = useState<{ id: string; rol: "admin" | "recepcion" | "veterinario" } | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -105,14 +109,42 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
     cargarEspecies()
   }, [])
 
+  useEffect(() => {
+    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
+      .then(res => setUsuario(res.data))
+      .catch(() => setUsuario(null));
+  }, [])
+  
+  useEffect(() => {
+  if (error && errorRef.current) {
+    const el = errorRef.current;
+    const parent = el.closest('[data-scrollable]') as HTMLElement || el.offsetParent as HTMLElement;
+
+    if (parent) {
+      parent.scrollTo({
+        top: el.offsetTop - 40, // deja un margen de 40px arriba
+        behavior: "smooth",
+      });
+    } else {
+      window.scrollTo({
+        top: el.offsetTop - 40,
+        behavior: "smooth",
+      });
+    }
+  }
+  }, [error]);
+
+  const rolActual = usuario?.rol;
+
   const onSubmit = async (data: FormData) => {
     setError(null)
     setMensaje(null)
     try {
       if (mascota?.id) {
+        const { edad_aproximada, ...rest } = data
         await axios.patch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/mascotas/${mascota.id}`,
-          data,
+          rest,
           { withCredentials: true }
         )
         setMensaje('Mascota actualizada correctamente')
@@ -142,20 +174,60 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
     }
   }
 
+  function calcularEdadActual(
+    fechaRegistro: Date | string,
+    edadEnMeses: number
+  ): { años: number; meses: number } {
+    const fecha = typeof fechaRegistro === "string" ? new Date(fechaRegistro) : fechaRegistro
+  
+    // edad en meses al momento del registro
+    const edadRegistroMs = edadEnMeses * 30.44 * 24 * 60 * 60 * 1000 // meses -> ms aprox
+    const nacimientoEst = new Date(fecha.getTime() - edadRegistroMs)
+  
+    // diferencia contra hoy
+    const hoy = new Date()
+    let diffMeses =
+      (hoy.getFullYear() - nacimientoEst.getFullYear()) * 12 +
+      (hoy.getMonth() - nacimientoEst.getMonth())
+  
+    if (hoy.getDate() < nacimientoEst.getDate()) {
+      diffMeses -= 1
+    }
+  
+    const años = Math.floor(diffMeses / 12)
+    const meses = diffMeses % 12
+  
+    return { años, meses }
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-        <FormItem>
-          <FormLabel>#EXP</FormLabel>
-          <FormControl>
-            <input
-              type="text"
-              value={mascota?.expediente ?? '—'}
-              disabled
-              className="border rounded px-3 py-2 w-full bg-gray-100 text-gray-600"
-            />
-          </FormControl>
-        </FormItem>
+        <FormField
+          control={form.control}
+          name="expediente"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>#EXP</FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  {...field}
+                  disabled={rolActual !== "admin"}
+                  className={`border rounded px-3 py-2 w-full ${
+                    rolActual === "admin" ? "bg-white text-black" : "bg-gray-100 text-gray-600"
+                  }`}
+                  value={field.value ?? mascota?.expediente ?? "—"}
+                  onChange={(e) => {
+                    if (rolActual === "admin") {
+                      field.onChange(Number(e.target.value))
+                    }
+                  }}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="nombre"
@@ -267,8 +339,19 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
               ? Number(form.watch("edad_aproximada"))
               : 0
 
-            const años = Math.floor(edadMeses / 12)
-            const meses = edadMeses % 12
+            let años = Math.floor(edadMeses / 12)
+            let meses = edadMeses % 12
+
+            // Si existe fecha_registro, calculamos edad actual
+            const fechaRegistro = mascota?.fecha_creacion
+            let edadActual = null
+            if (fechaRegistro) {
+              edadActual = calcularEdadActual(fechaRegistro, edadMeses)
+              años = edadActual.años
+              meses = edadActual.meses
+            }
+
+            const esEdicion = Boolean(mascota?.id)
 
             return (
               <FormItem>
@@ -277,11 +360,12 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
                   {/* Select Años */}
                   <FormLabel>Años</FormLabel>
                   <Select
+                    disabled={esEdicion}
                     onValueChange={(value) => {
                       const totalMeses = Number(value) * 12 + meses
                       form.setValue("edad_aproximada", Number(totalMeses))
                     }}
-                    defaultValue={String(años)}
+                    value={String(años)}
                   >
                     <SelectTrigger className="w-24">
                       <SelectValue placeholder="Años" />
@@ -296,11 +380,12 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
                   {/* Select Meses */}
                   <FormLabel>Meses</FormLabel>
                   <Select
+                    disabled={esEdicion}
                     onValueChange={(value) => {
                       const totalMeses = años * 12 + Number(value)
                       form.setValue("edad_aproximada", Number(totalMeses))
                     }}
-                    defaultValue={String(meses)}
+                    value={String(meses)}
                   >
                     <SelectTrigger className="w-24">
                       <SelectValue placeholder="Meses" />
@@ -368,7 +453,7 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
 
         <Button type="submit">Guardar cambios</Button>
         {mensaje && <p className="text-green-600">{mensaje}</p>}
-        {error && <p className="text-red-600">{error}</p>}
+        {error && <p ref={errorRef} className="text-red-600">{error}</p>}
       </form>
     </Form>
   )
