@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -96,8 +96,9 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
         { withCredentials: true }
       )
       setMensaje('Correo de restablecimiento enviado')
-    } catch (e: unknown) {
-      setError('Error al enviar el correo');
+    } catch (err) {
+      const e = err as AxiosError<{ message?: string }>;
+      setError(e.response?.data?.message || 'Error al enviar el correo');
     }
   }
 

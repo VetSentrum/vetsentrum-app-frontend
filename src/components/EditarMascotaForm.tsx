@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
+import axios, { AxiosError }from 'axios'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -158,7 +158,8 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
       }
       onSuccess(mensaje || 'Operación exitosa')
       onClose()
-    } catch (e: unknown) {
+    } catch (err) {
+      const e = err as AxiosError<{ message?: string }>;
       let mensajeError = 'Error al guardar mascota';
     
       if (typeof e === 'object' && e !== null && 'response' in e) {

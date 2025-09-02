@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios';
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -268,7 +268,8 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
           : 'Cliente inactivado correctamente'
       );
       onClose();
-    } catch (e: any) {
+    } catch (err) {
+      const e = err as AxiosError<{ message: string }>;
       setError(
         nuevoEstado
           ? e.response?.data?.message || 'Error al reactivar cliente'
@@ -281,7 +282,6 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
   
   const eliminarCliente = async () => {
     if (!cliente) return
-    const nuevoEstado = !cliente.activo
 
     if (rolActual === "admin" && cliente.activo) {
       setConfirmOpen(true);
@@ -481,14 +481,14 @@ export function EditarClienteForm({ cliente, onClose, onSuccess }: Props) {
                     onSuccess("Cliente eliminado definitivamente");
                     onClose();
                     setConfirmOpen(false);
-                  } catch (e: any) {
+                  } catch (err) {
                     setConfirmOpen(false);
-                  
+                    const e = err as AxiosError<{ message: string; mascotas?: { nombre: string }[] }>;
                     if (e.response?.data?.mascotas) {
                       setError(
                         <span>
                           {e.response.data.message} Ejemplo:{" "}
-                          {e.response.data.mascotas.map((m: any) => m.nombre).join(", ")}.{" "}
+                          {e.response.data.mascotas.map((m) => m.nombre).join(", ")}.{" "}
                           Puedes ver las{" "}
                           <a
                             href={`/mascotas?cliente=${cliente?.id}`}
