@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { EditarCitaForm } from '@/components/EditarCitaForm'
-import axios, { AxiosError } from 'axios'
+import axios from 'axios'
 
 interface Cita {
   id: string
@@ -70,7 +70,7 @@ export default function CitasPage() {
     } catch (err) {
       console.error(err)
     }
-  }
+  }  
 
   useEffect(() => { fetchCitas() }, [])
 
@@ -78,7 +78,7 @@ export default function CitasPage() {
     axios.get<Usuario>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
       .then(res => setUsuario(res.data))
       .catch(() => setUsuario(null))
-  }, [])
+  }, [])  
 
   const abrirModal = (cita: Cita | null) => {
     if (cita) {
@@ -231,7 +231,7 @@ export default function CitasPage() {
                             const e = err as { response?: { data?: { message?: string } } }
                             setMensajeGlobal(e.response?.data?.message || 'Error al registrar ingreso')
                           }
-                        }}                        
+                        }}                                             
                         disabled={cita.estado !== "pendiente"}
                       >
                         Registrar ingreso
