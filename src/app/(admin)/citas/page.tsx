@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { EditarCitaForm } from '@/components/EditarCitaForm'
-import axios, { AxiosError } from 'axios'
+import axios from 'axios'
 
 interface Cita {
   id: string
@@ -15,6 +15,17 @@ interface Cita {
   mascota_nombre: string
   motivo: string
   estado: string
+}
+
+interface CitaRaw {
+  id: string
+  fecha_hora: string
+  motivo: string
+  estado: string
+  cliente_id: string
+  mascota_id: string
+  cliente?: { nombre_completo: string }
+  mascota?: { nombre: string }
 }
 
 interface Usuario {
@@ -43,7 +54,7 @@ export default function CitasPage() {
         credentials: 'include',
       })
       if (!res.ok) throw new Error('Error al obtener citas')
-      const data: any[] = await res.json()
+      const data: CitaRaw[] = await res.json()
 
       const citasNormalizadas: Cita[] = data.map(c => ({
         id: c.id,
@@ -71,8 +82,7 @@ export default function CitasPage() {
 
   const abrirModal = (cita: Cita | null) => {
     if (cita) {
-      const fechaLocal = new Date(cita.fecha).toISOString().slice(0, 16)
-      setCitaSeleccionada({ ...cita, fecha: fechaLocal })
+      setCitaSeleccionada(cita)
     } else {
       setCitaSeleccionada(null)
     }
@@ -209,7 +219,7 @@ export default function CitasPage() {
                         size="sm"
                         onClick={async () => {
                           try {
-                            await axios.patch(
+                            const res = await axios.patch(
                               `${process.env.NEXT_PUBLIC_BACKEND_URL}/citas/${cita.id}/ingreso`,
                               {},
                               { withCredentials: true }
@@ -217,8 +227,8 @@ export default function CitasPage() {
                             setMensajeGlobal('Ingreso registrado')
                             setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'completada' } : c))
                           } catch (err) {
-                            const error = err as AxiosError<{ message: string }>
-                            setMensajeGlobal(error.response?.data?.message || 'Error al registrar ingreso')
+                            const e = err as { response?: { data?: { message?: string } } }
+                            setMensajeGlobal(e.response?.data?.message || 'Error al registrar ingreso')
                           }
                         }}
                         disabled={cita.estado !== "pendiente"}
