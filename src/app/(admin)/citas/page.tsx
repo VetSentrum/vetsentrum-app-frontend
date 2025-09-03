@@ -22,6 +22,17 @@ interface Usuario {
   rol: 'admin' | 'recepcion' | 'veterinario'
 }
 
+interface CitaRaw {
+  id: string
+  fecha_hora: string
+  motivo: string
+  estado: string
+  cliente_id: string
+  mascota_id: string
+  cliente?: { nombre_completo: string }
+  mascota?: { nombre: string }
+}
+
 export default function CitasPage() {
   const [citas, setCitas] = useState<Cita[]>([])
   const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null)
@@ -37,25 +48,15 @@ export default function CitasPage() {
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const [mostrarCanceladas, setMostrarCanceladas] = useState(false)
 
-  interface CitaRaw {
-    id: string
-    fecha_hora: string
-    motivo: string
-    estado: string
-    cliente_id: string
-    mascota_id: string
-    cliente?: { nombre_completo: string }
-    mascota?: { nombre: string }
-  }
-  
+  // ---- fetch de citas ----
   const fetchCitas = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/citas`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/citas`, {
         credentials: 'include',
       })
-      if (!res.ok) throw new Error('Error al obtener citas')
-      const data: CitaRaw[] = await res.json()
-  
+      if (!response.ok) throw new Error('Error al obtener citas')
+      const data: CitaRaw[] = await response.json()
+
       const citasNormalizadas: Cita[] = data.map(c => ({
         id: c.id,
         fecha: c.fecha_hora,
@@ -67,22 +68,26 @@ export default function CitasPage() {
         mascota_nombre: c.mascota?.nombre ?? ''
       }))
       setCitas(citasNormalizadas)
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      const e = error as Error
+      console.error(e.message)
     }
-  }  
+  }
 
   useEffect(() => { fetchCitas() }, [])
 
+  // ---- fetch de usuario ----
   useEffect(() => {
     axios.get<Usuario>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
-      .then(res => setUsuario(res.data))
+      .then(({ data }) => setUsuario(data))
       .catch(() => setUsuario(null))
-  }, [])  
+  }, [])
 
+  // ---- modal ----
   const abrirModal = (cita: Cita | null) => {
     if (cita) {
-      const fechaLocal = new Date(cita.fecha).toISOString().slice(0, 16)
+      const fechaDate = new Date(cita.fecha)
+      const fechaLocal = isNaN(fechaDate.getTime()) ? '' : fechaDate.toISOString().slice(0, 16)
       setCitaSeleccionada({ ...cita, fecha: fechaLocal })
     } else {
       setCitaSeleccionada(null)
@@ -95,6 +100,7 @@ export default function CitasPage() {
     setCitaSeleccionada(null)
   }
 
+  // ---- sorting ----
   const handleSort = (field: 'fecha' | 'cliente_nombre' | 'mascota_nombre') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -104,6 +110,7 @@ export default function CitasPage() {
     }
   }
 
+  // ---- filtrado ----
   const citasFiltradas = citas.filter(c => {
     const coincideBusqueda =
       c.motivo.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -227,11 +234,11 @@ export default function CitasPage() {
                             )
                             setMensajeGlobal('Ingreso registrado')
                             setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'completada' } : c))
-                          } catch (err) {
-                            const e = err as { response?: { data?: { message?: string } } }
-                            setMensajeGlobal(e.response?.data?.message || 'Error al registrar ingreso')
+                          } catch (error) {
+                            const e = error as { response?: { data?: { message?: string } } }
+                            setMensajeGlobal(e.response?.data?.message ?? 'Error al registrar ingreso')
                           }
-                        }}                                             
+                        }}
                         disabled={cita.estado !== "pendiente"}
                       >
                         Registrar ingreso
@@ -245,6 +252,7 @@ export default function CitasPage() {
         </table>
       </div>
 
+      {/* --- Paginación --- */}
       <div className="flex justify-between items-center mt-2">
         <div>
           Mostrar{' '}
@@ -269,6 +277,7 @@ export default function CitasPage() {
         </div>
       </div>
 
+      {/* --- Modal --- */}
       <Dialog open={modalAbierto} onOpenChange={cerrarModal}>
         <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
