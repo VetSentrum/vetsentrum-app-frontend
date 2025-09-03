@@ -82,7 +82,7 @@ export function EditarUsuarioForm({ usuario, onClose, onSuccess }: Props) {
         mensajeError = e.message || mensajeError;
       }
     
-      setError(mensajeError);
+      setError(mensajeError); 
     }
   }
 

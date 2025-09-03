@@ -113,6 +113,32 @@
 
     if (loading) return <p>Cargando mascotas...</p>;
 
+    function calcularEdadActual(
+      fechaRegistro: Date | string,
+      edadEnMeses: number
+    ): { años: number; meses: number } {
+      const fecha = typeof fechaRegistro === "string" ? new Date(fechaRegistro) : fechaRegistro
+    
+      // edad en meses al momento del registro
+      const edadRegistroMs = edadEnMeses * 30.44 * 24 * 60 * 60 * 1000 // meses -> ms aprox
+      const nacimientoEst = new Date(fecha.getTime() - edadRegistroMs)
+    
+      // diferencia contra hoy
+      const hoy = new Date()
+      let diffMeses =
+        (hoy.getFullYear() - nacimientoEst.getFullYear()) * 12 +
+        (hoy.getMonth() - nacimientoEst.getMonth())
+    
+      if (hoy.getDate() < nacimientoEst.getDate()) {
+        diffMeses -= 1
+      }
+    
+      const años = Math.floor(diffMeses / 12)
+      const meses = diffMeses % 12
+    
+      return { años, meses }
+    }
+
     return (
       <main className="max-w-6xl mx-auto mt-10">
         <div className="flex items-center justify-between mb-4">
@@ -168,8 +194,14 @@
                   <td className="p-2">{mascota.especie?.nombre ?? 'Desconocido'}</td>
                   <td className="p-2">{mascota.raza}</td>
                   <td className="p-2">
-                    {mascota.edad_aproximada
-                      ? `${Math.floor(Number(mascota.edad_aproximada) / 12)}a ${Number(mascota.edad_aproximada) % 12}m`
+                    {mascota.fecha_creacion && mascota.edad_aproximada
+                      ? (() => {
+                          const { años, meses } = calcularEdadActual(
+                            mascota.fecha_creacion,
+                            Number(mascota.edad_aproximada)
+                          )
+                          return `${años}a ${meses}m`
+                        })()
                       : '—'}
                   </td>
                   <td className="p-2">{mascota.peso}</td>

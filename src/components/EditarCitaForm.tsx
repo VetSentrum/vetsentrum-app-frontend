@@ -1,20 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import axios from 'axios'
+
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from './ui/select'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 
 const schema = z.object({
-  fecha: z.string().min(1, 'Fecha obligatoria'),
+  fecha_hora: z.string().min(1, 'Fecha obligatoria'),
   cliente_id: z.string().min(1, 'Cliente obligatorio'),
   mascota_id: z.string().min(1, 'Mascota obligatorio'),
   motivo: z.string().min(1, 'Motivo obligatorio'),
-})
+});
 
 type FormData = z.infer<typeof schema>
 
@@ -36,6 +38,7 @@ interface Cliente {
 interface Mascota {
   id: string
   nombre: string
+  cliente_id: string
 }
 
 interface Props {
@@ -45,93 +48,216 @@ interface Props {
 }
 
 export function EditarCitaForm({ cita, onClose, onSuccess }: Props) {
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [mascotasFiltradas, setMascotasFiltradas] = useState<Mascota[]>([])
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const clientesMock: Cliente[] = [
-    { id: 'c1', nombre_completo: 'Carlos Marrufo' },
-    { id: 'c2', nombre_completo: 'Ana Pérez' },
-  ]
-  const mascotasMock: Mascota[] = [
-    { id: 'm1', nombre: 'Mili' },
-    { id: 'm2', nombre: 'Rex' },
-  ]
+  const fechaLocal = cita.fecha
+  ? new Date(cita.fecha).toLocaleString('sv', { timeZone: 'America/Monterrey' }).replace(' ', 'T').slice(0,16)
+  : '';
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      fecha: cita.fecha || '',
+      fecha_hora: fechaLocal || '',
       cliente_id: cita.cliente_id || '',
       mascota_id: cita.mascota_id || '',
       motivo: cita.motivo || '',
     }
   })
 
-  const onSubmit = (data: FormData) => {
-    // 🔹 Mock de guardar
-    console.log('Guardando cita', data)
-    onSuccess(`Cita ${cita.id ? 'actualizada' : 'creada'} correctamente`)
-    onClose()
+  const clienteSeleccionado = form.watch('cliente_id')
+
+  // Cargar clientes al inicio
+  useEffect(() => {
+    const cargarClientes = async () => {
+      try {
+        const res = await axios.get<Cliente[]>(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes?inactivos=false`,
+          { withCredentials: true }
+        )
+        setClientes(res.data)
+      } catch (err) {
+        console.error('Error cargando clientes:', err)
+        setError('No se pudieron cargar los clientes')
+      }
+    }
+    cargarClientes()
+  }, [])
+
+  // Función ra cargar mascotas de un cliente
+  const cargarMascotasPorCliente = async (clienteId: string) => {
+    try {
+      const res = await axios.get<Mascota[]>(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${clienteId}/mascotas`,
+        { withCredentials: true }
+      )
+      setMascotasFiltradas(res.data)
+    } catch (err) {
+      console.error('Error cargando mascotas:', err)
+      setMascotasFiltradas([])
+      setError('No se pudieron cargar las mascotas')
+    }
+  }
+
+  // Cargar mascotas cuando cambia el cliente
+  useEffect(() => {
+    if (clienteSeleccionado) {
+      cargarMascotasPorCliente(clienteSeleccionado)
+      form.setValue('mascota_id', '') // limpiar selección de mascota
+    } else {
+      setMascotasFiltradas([])
+    }
+  }, [clienteSeleccionado])
+
+  // Cargar datos iniciales si es edición
+  useEffect(() => {
+    if (cita.cliente_id) {
+      form.setValue('cliente_id', cita.cliente_id)
+      form.setValue('mascota_id', cita.mascota_id)
+      cargarMascotasPorCliente(cita.cliente_id)
+    }
+  }, [cita])
+
+  const onSubmit = async (data: FormData) => {
+    setError(null)
+    setMensaje(null)
+
+    try {
+      const payload = {
+        ...data,
+        fecha_hora: data.fecha_hora.replace('T', ' '),
+      };
+      if (cita.id) {
+        await axios.patch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/citas/${cita.id}`, payload, { withCredentials: true })
+        setMensaje('Cita actualizada correctamente')
+      } else {
+        await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/citas`, payload, { withCredentials: true })
+        setMensaje('Cita creada correctamente')
+      }
+
+      onSuccess(mensaje || 'Operación exitosa')
+      onClose()
+      form.reset()
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Error al guardar la cita')
+    }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField name="fecha" control={form.control} render={({ field }) => (
-          <FormItem>
-            <FormLabel>Fecha y hora</FormLabel>
-            <FormControl>
-              <Input type="datetime-local" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          name="fecha_hora"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fecha y hora</FormLabel>
+              <FormControl>
+                <Input type="datetime-local" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <FormField name="cliente_id" control={form.control} render={({ field }) => (
-          <FormItem>
-            <FormLabel>Cliente</FormLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clientesMock.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          name="cliente_id"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Cliente</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={(val) => {
+                  field.onChange(val)
+                  form.setValue('mascota_id', '')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <FormField name="mascota_id" control={form.control} render={({ field }) => (
-          <FormItem>
-            <FormLabel>Mascota</FormLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona una mascota" />
-              </SelectTrigger>
-              <SelectContent>
-                {mascotasMock.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          name="mascota_id"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mascota</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={mascotasFiltradas.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una mascota" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mascotasFiltradas.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <FormField name="motivo" control={form.control} render={({ field }) => (
-          <FormItem>
-            <FormLabel>Motivo</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <FormField
+          name="motivo"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Motivo</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {mensaje && <div className="text-green-600">{mensaje}</div>}
         {error && <div className="text-red-600">{error}</div>}
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          {cita.id && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  // PATCH para cancelar cita
+                  const res = await axios.patch(
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/citas/${cita.id}/cancelar`,
+                    {},
+                    { withCredentials: true }
+                  );
+
+                  // Llamar onSuccess con mensaje en lugar de objeto
+                  onSuccess('Cita cancelada correctamente');
+
+                  form.reset();
+                  onClose();
+                } catch (err: any) {
+                  setError(err?.response?.data?.message || 'Error al cancelar la cita');
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+          )}
+
           <Button type="submit">Guardar</Button>
         </div>
       </form>

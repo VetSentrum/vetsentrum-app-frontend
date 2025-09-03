@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { EditarCitaForm } from '@/components/EditarCitaForm'
+import axios from 'axios'
 
 interface Cliente {
   id: string
@@ -23,6 +24,7 @@ interface Cita {
   mascota_id: string
   mascota_nombre: string
   motivo: string
+  estado: string
 }
 
 export default function CitasPage() {
@@ -37,27 +39,52 @@ export default function CitasPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [usuario, setUsuario] = useState<{ id: string; rol: 'admin' | 'recepcion' | 'veterinario' } | null>(null)
 
-  // 🔹 Mocks de ejemplo
+  // nuevos estados para filtros
+  const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
+  const [mostrarCanceladas, setMostrarCanceladas] = useState(false)
+
+  const fetchCitas = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/citas`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Error al obtener citas')
+      const data = await res.json()
+
+      const citasNormalizadas = data.map((c: any) => ({
+        id: c.id,
+        fecha: c.fecha_hora,
+        motivo: c.motivo,
+        estado: c.estado,
+        cliente_id: c.cliente_id,
+        mascota_id: c.mascota_id,
+        cliente_nombre: c.cliente?.nombre_completo ?? '',
+        mascota_nombre: c.mascota?.nombre ?? ''
+      }))
+      setCitas(citasNormalizadas)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => { fetchCitas() }, [])
+
   useEffect(() => {
-    const clientesMock: Cliente[] = [
-      { id: 'c1', nombre_completo: 'Carlos Marrufo' },
-      { id: 'c2', nombre_completo: 'Ana Pérez' },
-    ]
-    const mascotasMock: Mascota[] = [
-      { id: 'm1', nombre: 'Mili' },
-      { id: 'm2', nombre: 'Rex' },
-    ]
-    const citasMock: Cita[] = [
-      { id: '1', fecha: '2025-09-01T10:00', cliente_id: 'c1', cliente_nombre: 'Carlos Marrufo', mascota_id: 'm1', mascota_nombre: 'Mili', motivo: 'Vacuna anual' },
-      { id: '2', fecha: '2025-09-01T11:00', cliente_id: 'c2', cliente_nombre: 'Ana Pérez', mascota_id: 'm2', mascota_nombre: 'Rex', motivo: 'Chequeo general' },
-    ]
-    setCitas(citasMock)
+    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
+      .then(res => setUsuario(res.data))
+      .catch(() => setUsuario(null))
   }, [])
 
   const abrirModal = (cita: Cita | null) => {
-    setCitaSeleccionada(cita)
+    if (cita) {
+      const fechaLocal = new Date(cita.fecha).toISOString().slice(0, 16)
+      setCitaSeleccionada({ ...cita, fecha: fechaLocal })
+    } else {
+      setCitaSeleccionada(null)
+    }
     setModalAbierto(true)
   }
+
   const cerrarModal = () => {
     setModalAbierto(false)
     setCitaSeleccionada(null)
@@ -72,11 +99,22 @@ export default function CitasPage() {
     }
   }
 
-  const citasFiltradas = citas.filter(c =>
-    c.motivo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.mascota_nombre.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  // aplica filtros de búsqueda y estados
+  const citasFiltradas = citas.filter(c => {
+    const coincideBusqueda =
+      c.motivo.toLowerCase().includes(busqueda.toLowerCase()) ||
+      c.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      c.mascota_nombre.toLowerCase().includes(busqueda.toLowerCase())
+
+    const esPendiente = c.estado === 'pendiente'
+    const esCompletada = c.estado === 'completada'
+    const esCancelada = c.estado === 'cancelada'
+
+    if (esPendiente) return coincideBusqueda
+    if (esCompletada && mostrarCompletadas) return coincideBusqueda
+    if (esCancelada && mostrarCanceladas) return coincideBusqueda
+    return false
+  })
 
   const citasOrdenadas = [...citasFiltradas].sort((a, b) => {
     let valA: string | number = a[sortField] ?? ''
@@ -95,7 +133,7 @@ export default function CitasPage() {
     <main className="max-w-6xl mx-auto mt-10">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Citas</h1>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <input
             type="text"
             placeholder="Buscar..."
@@ -103,9 +141,23 @@ export default function CitasPage() {
             onChange={(e) => { setBusqueda(e.target.value); setPagina(1) }}
             className="border rounded px-3 py-1"
           />
-          {(usuario?.rol === 'admin' || usuario?.rol === 'recepcion') && (
-            <Button onClick={() => abrirModal(null)}>Nueva Cita</Button>
-          )}
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={mostrarCompletadas}
+              onChange={(e) => setMostrarCompletadas(e.target.checked)}
+            />
+            Completadas
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={mostrarCanceladas}
+              onChange={(e) => setMostrarCanceladas(e.target.checked)}
+            />
+            Canceladas
+          </label>
+          <Button onClick={() => abrirModal(null)}>Nueva Cita</Button>
         </div>
       </div>
 
@@ -117,29 +169,69 @@ export default function CitasPage() {
         <table className="min-w-full border-collapse table-auto">
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
-              <th className="cursor-pointer p-2 border-b" onClick={() => handleSort('fecha')}>
+              <th className="cursor-pointer p-2 border-b text-center" onClick={() => handleSort('fecha')}>
                 Fecha {sortField === 'fecha' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="cursor-pointer p-2 border-b" onClick={() => handleSort('cliente_nombre')}>
+              <th className="cursor-pointer p-2 border-b text-center" onClick={() => handleSort('cliente_nombre')}>
                 Cliente {sortField === 'cliente_nombre' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="cursor-pointer p-2 border-b" onClick={() => handleSort('mascota_nombre')}>
+              <th className="cursor-pointer p-2 border-b text-center" onClick={() => handleSort('mascota_nombre')}>
                 Mascota {sortField === 'mascota_nombre' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="text-left p-2 border-b">Motivo</th>
-              <th className="text-left p-2 border-b">Acciones</th>
+              <th className="p-2 border-b text-center">Motivo</th>
+              <th className="p-2 border-b text-center">Estado</th>
+              <th className="p-2 border-b text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {citasPaginadas.map(cita => (
               <tr key={cita.id} className="border-t">
-                <td className="p-2">{new Date(cita.fecha).toLocaleString()}</td>
-                <td className="p-2">{cita.cliente_nombre}</td>
-                <td className="p-2">{cita.mascota_nombre}</td>
-                <td className="p-2">{cita.motivo}</td>
-                <td className="p-2 flex gap-2">
+                <td className="p-2 text-center">
+                  {cita.fecha ? new Date(cita.fecha).toLocaleString("es-MX", {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'UTC'
+                  }) : ''}
+                </td>
+                <td className="p-2 text-center">{cita.cliente_nombre}</td>
+                <td className="p-2 text-center">{cita.mascota_nombre}</td>
+                <td className="p-2 text-center">{cita.motivo}</td>
+                <td className="p-2 text-center">{cita.estado}</td>
+                <td className="p-2 text-center flex gap-2">
                   {(usuario?.rol === 'admin' || usuario?.rol === 'recepcion') && (
-                    <Button variant="outline" size="sm" onClick={() => abrirModal(cita)}>Editar</Button>
+                    <>
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={() => abrirModal(cita)}
+                        disabled={cita.estado !== "pendiente"}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await axios.patch(
+                              `${process.env.NEXT_PUBLIC_BACKEND_URL}/citas/${cita.id}/ingreso`,
+                              {},
+                              { withCredentials: true }
+                            )
+                            setMensajeGlobal('Ingreso registrado')
+                            setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'completada' } : c))
+                          } catch (err: any) {
+                            setMensajeGlobal(err?.response?.data?.message || 'Error al registrar ingreso')
+                          }
+                        }}
+                        disabled={cita.estado !== "pendiente"}
+                      >
+                        Registrar ingreso
+                      </Button>
+                    </>
                   )}
                 </td>
               </tr>
@@ -184,7 +276,10 @@ export default function CitasPage() {
             <EditarCitaForm
               cita={citaSeleccionada ?? {} as Cita}
               onClose={cerrarModal}
-              onSuccess={(mensaje: string) => { setMensajeGlobal(mensaje) }}
+              onSuccess={(mensaje: string) => { 
+                setMensajeGlobal(mensaje)
+                fetchCitas()
+              }}
             />
           </div>
         </DialogContent>
