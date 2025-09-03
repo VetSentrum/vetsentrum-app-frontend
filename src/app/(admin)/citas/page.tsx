@@ -4,17 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { EditarCitaForm } from '@/components/EditarCitaForm'
-import axios from 'axios'
-
-interface Cliente {
-  id: string
-  nombre_completo: string
-}
-
-interface Mascota {
-  id: string
-  nombre: string
-}
+import axios, { AxiosError } from 'axios'
 
 interface Cita {
   id: string
@@ -27,6 +17,11 @@ interface Cita {
   estado: string
 }
 
+interface Usuario {
+  id: string
+  rol: 'admin' | 'recepcion' | 'veterinario'
+}
+
 export default function CitasPage() {
   const [citas, setCitas] = useState<Cita[]>([])
   const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null)
@@ -37,9 +32,8 @@ export default function CitasPage() {
   const [porPagina, setPorPagina] = useState(10)
   const [sortField, setSortField] = useState<'fecha' | 'cliente_nombre' | 'mascota_nombre'>('fecha')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [usuario, setUsuario] = useState<{ id: string; rol: 'admin' | 'recepcion' | 'veterinario' } | null>(null)
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
 
-  // nuevos estados para filtros
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const [mostrarCanceladas, setMostrarCanceladas] = useState(false)
 
@@ -49,9 +43,9 @@ export default function CitasPage() {
         credentials: 'include',
       })
       if (!res.ok) throw new Error('Error al obtener citas')
-      const data = await res.json()
+      const data: any[] = await res.json()
 
-      const citasNormalizadas = data.map((c: any) => ({
+      const citasNormalizadas: Cita[] = data.map(c => ({
         id: c.id,
         fecha: c.fecha_hora,
         motivo: c.motivo,
@@ -70,7 +64,7 @@ export default function CitasPage() {
   useEffect(() => { fetchCitas() }, [])
 
   useEffect(() => {
-    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
+    axios.get<Usuario>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
       .then(res => setUsuario(res.data))
       .catch(() => setUsuario(null))
   }, [])
@@ -99,7 +93,6 @@ export default function CitasPage() {
     }
   }
 
-  // aplica filtros de búsqueda y estados
   const citasFiltradas = citas.filter(c => {
     const coincideBusqueda =
       c.motivo.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -216,15 +209,16 @@ export default function CitasPage() {
                         size="sm"
                         onClick={async () => {
                           try {
-                            const res = await axios.patch(
+                            await axios.patch(
                               `${process.env.NEXT_PUBLIC_BACKEND_URL}/citas/${cita.id}/ingreso`,
                               {},
                               { withCredentials: true }
                             )
                             setMensajeGlobal('Ingreso registrado')
                             setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, estado: 'completada' } : c))
-                          } catch (err: any) {
-                            setMensajeGlobal(err?.response?.data?.message || 'Error al registrar ingreso')
+                          } catch (err) {
+                            const error = err as AxiosError<{ message: string }>
+                            setMensajeGlobal(error.response?.data?.message || 'Error al registrar ingreso')
                           }
                         }}
                         disabled={cita.estado !== "pendiente"}
