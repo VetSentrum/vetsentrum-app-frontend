@@ -164,8 +164,85 @@ export function EditarCitaForm({ cita, onClose, onSuccess }: Props) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {/* Campos del formulario (fecha, cliente, mascota, motivo) */}
-        {/* ... idéntico a tu código ... */}
+      <FormField
+          name="fecha_hora"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fecha y hora</FormLabel>
+              <FormControl>
+                <Input type="datetime-local" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="cliente_id"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Cliente</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={(val) => {
+                  field.onChange(val)
+                  form.setValue('mascota_id', '')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="mascota_id"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mascota</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={mascotasFiltradas.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una mascota" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mascotasFiltradas.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="motivo"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Motivo</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         {mensaje && <div className="text-green-600">{mensaje}</div>}
         {error && <div className="text-red-600">{error}</div>}
 
