@@ -61,6 +61,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {(user.rol === "admin" || user.rol === "recepcion" || user.rol === "veterinario") && (
             <a href="/citas" className="p-3 rounded-lg hover:bg-gray-800">Citas</a>
           )}
+
+          {/* Visible para admin y veterinario */}
+          {(user.rol === "admin" || user.rol === "veterinario") && (
+            <a href="/consultas" className="p-3 rounded-lg hover:bg-gray-800">Consultas</a>
+          )}
         </nav>
       </aside>
 

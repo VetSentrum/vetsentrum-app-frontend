@@ -249,7 +249,7 @@ export function EditarCitaForm({ cita, onClose, onSuccess }: Props) {
         <div className="flex justify-end gap-2">
           {cita.id && (
             <Button variant="outline" onClick={onCancelarCita}>
-              Cancelar
+              Cancelar cita
             </Button>
           )}
           <Button type="submit">Guardar</Button>
