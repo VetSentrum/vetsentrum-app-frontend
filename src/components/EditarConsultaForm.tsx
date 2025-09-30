@@ -27,6 +27,7 @@ interface ConsultaFormData {
   
   // Datos generales
   paciente: string;
+  cliente: string; // Dueño
   fecha: string;
   peso: string;
   edad: string;
@@ -36,6 +37,7 @@ interface ConsultaFormData {
   sexo: string;
   motivo_consulta: string;
   desde_cuando_mascota: string;
+  otras_mascotas_check: boolean;
   otras_mascotas: string;
   habitat: string;
   dieta: string;
@@ -61,6 +63,7 @@ interface ConsultaFormData {
   condicion_corporal: string;
   palp_abdom: string;
   actitud: string;
+  historia_clinica: string;
   
   // Sistemas
   // Digestivo
@@ -164,6 +167,7 @@ interface ConsultaFormData {
   diagnostico_diferencial: string;
   examenes_laboratorio: string[];
   manejo: string[];
+  detalle_medicamentos: string;
   indicaciones: string;
   proxima_cita: string;
   notas: string;
@@ -185,6 +189,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
       motivo_consulta: '',
       // Inicializar todos los campos con valores por defecto
       paciente: '',
+      cliente: '',
       fecha: new Date().toISOString().split('T')[0],
       peso: '',
       edad: '',
@@ -193,6 +198,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
       otra_especie: '',
       sexo: '',
       desde_cuando_mascota: '',
+      otras_mascotas_check: false,
       otras_mascotas: '',
       habitat: '',
       dieta: '',
@@ -216,6 +222,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
       condicion_corporal: '',
       palp_abdom: '',
       actitud: '',
+      historia_clinica: '',
       sistema_digestivo_na: true,
       apetito: '',
       ingesta_agua: '',
@@ -254,7 +261,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
       estado_gestante: '',
       ultimo_parto: '',
       descarga_vulva_prepucio: '',
-      tegumentario_na: false,
+      tegumentario_na: true,
       alopecia: '',
       lesiones: '',
       aspecto_lesiones: '',
@@ -328,6 +335,8 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
     }
   };
 
+
+  const manejoSeleccionado = form.watch("manejo");
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -342,13 +351,25 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
 
           {/* Datos Generales */}
           <TabsContent value="datos-generales" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="paciente"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Paciente</FormLabel>
+                    <FormLabel>Paciente TO-DO: Autoload</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cliente"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dueño TO-DO: Autoload</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -366,9 +387,78 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="raza"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Raza TO-DO: Autoload</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="especie"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Especie TO-DO: Autoload</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+  
+              <FormField
+                control={form.control}
+                name="sexo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sexo TO-DO: Autoload</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="edad"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Edad TO-DO: Autoload</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="habitat"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hábitat</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione hábitat" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="interior">Interior</SelectItem>
+                        <SelectItem value="exterior">Exterior</SelectItem>
+                        <SelectItem value="ambos">Ambos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="peso"
@@ -383,10 +473,81 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
 
               <FormField
                 control={form.control}
-                name="edad"
+                name="desde_cuando_mascota"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Edad</FormLabel>
+                    <FormLabel>¿Desde cuándo tiene a su mascota?</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="otras_mascotas_check"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-0 space-y-0">
+                    <div className="flex items-center gap-1">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="h-4 w-4"
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer text-sm mb-0">
+                        Otras mascotas
+                      </FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="otras_mascotas"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Indique</FormLabel>
+                    <FormControl><Input {...field} disabled={form.watch('otras_mascotas_check') !== true} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="motivo_consulta"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Motivo de consulta</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="dieta"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dieta</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="historial_enfermedades"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Historial de enfermedades</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -394,166 +555,11 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="raza"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Raza</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="especie"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Especie</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione especie" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="perro">Perro</SelectItem>
-                      <SelectItem value="gato">Gato</SelectItem>
-                      <SelectItem value="ave">Ave</SelectItem>
-                      <SelectItem value="conejo">Conejo</SelectItem>
-                      <SelectItem value="otro">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {form.watch('especie') === 'otro' && (
-              <FormField
-                control={form.control}
-                name="otra_especie"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Especifique otra especie</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <FormField
-              control={form.control}
-              name="sexo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sexo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione sexo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="macho">Macho</SelectItem>
-                      <SelectItem value="hembra">Hembra</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="motivo_consulta"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Motivo de consulta</FormLabel>
-                  <FormControl><Textarea {...field} rows={2} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="desde_cuando_mascota"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>¿Desde cuándo tiene a su mascota?</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="otras_mascotas"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Otras mascotas</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="habitat"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Hábitat</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione hábitat" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="interior">Interior</SelectItem>
-                      <SelectItem value="exterior">Exterior</SelectItem>
-                      <SelectItem value="ambos">Ambos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dieta"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dieta</FormLabel>
-                  <FormControl><Textarea {...field} rows={2} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="historial_enfermedades"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Historial de enfermedades</FormLabel>
-                  <FormControl><Textarea {...field} rows={3} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </TabsContent>
 
           {/* Estado General */}
           <TabsContent value="estado-general" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               <FormField
                 control={form.control}
                 name="vacunas"
@@ -597,9 +603,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
-            </div>
 
-            {form.watch('desparasitacion') === 'si' && (
               <FormField
                 control={form.control}
                 name="desparasitacion_tipo"
@@ -619,6 +623,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                               field.onChange(currentValue.filter(v => v !== 'interna'));
                             }
                           }}
+                          disabled={form.watch('desparasitacion') !== 'si'}
                         />
                         <label htmlFor="desparasitacion_int">Interna</label>
                       </div>
@@ -634,6 +639,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                               field.onChange(currentValue.filter(v => v !== 'externa'));
                             }
                           }}
+                          disabled={form.watch('desparasitacion') !== 'si'}
                         />
                         <label htmlFor="desparasitacion_ext">Externa</label>
                       </div>
@@ -642,16 +648,53 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="rf"
+                name="actitud"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>RF</FormLabel>
-                    <FormControl><Input {...field} placeholder="+/-" /></FormControl>
+                    <FormLabel>Actitud</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione actitud" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="alerta">Alerta</SelectItem>
+                        <SelectItem value="agresivo">Agresivo</SelectItem>
+                        <SelectItem value="exitado">Exitado</SelectItem>
+                        <SelectItem value="deprimido">Deprimido</SelectItem>
+                        <SelectItem value="comatoso">Comatoso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="temperatura"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>T°</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              <FormField
+                control={form.control}
+                name="fc"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>FC</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -668,9 +711,34 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="sonido_cardiaco"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sonido cardiaco</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="mucosas"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mucosas</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-6 gap-2">
               <FormField
                 control={form.control}
                 name="reflejo_pupilar"
@@ -714,9 +782,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="nistagmo"
@@ -741,18 +807,26 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
 
               <FormField
                 control={form.control}
-                name="mucosas"
+                name="rf"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mucosas</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormLabel>RF</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="+/-" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="+">+</SelectItem>
+                        <SelectItem value="-">-</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="pe"
@@ -796,45 +870,9 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
+
+
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="temperatura"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Temperatura</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="fc"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>FC</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="sonido_cardiaco"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sonido Cardiaco</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -860,9 +898,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="condicion_corporal"
@@ -890,28 +926,16 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
 
             <FormField
               control={form.control}
-              name="actitud"
+              name="historia_clinica"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Actitud</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione actitud" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="alerta">Alerta</SelectItem>
-                      <SelectItem value="agresivo">Agresivo</SelectItem>
-                      <SelectItem value="exitado">Exitado</SelectItem>
-                      <SelectItem value="deprimido">Deprimido</SelectItem>
-                      <SelectItem value="comatoso">Comatoso</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Historia clínica</FormLabel>
+                  <FormControl><Textarea {...field} rows={3}/></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
           </TabsContent>
 
           {/* Sistemas */}
@@ -2404,7 +2428,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Exámenes de laboratorio</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {['Hemograma', 'Química Sanguínea', 'Urianálisis', 'Coprológico', 'Raspado de piel', 'Citología', 'Otro'].map((item) => (
                       <div key={item} className="flex items-center space-x-2">
                         <Checkbox
@@ -2434,7 +2458,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Manejo</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     {['Hospitalización', 'Medicamentos', 'Cirugía', 'Control', 'Otro'].map((item) => (
                       <div key={item} className="flex items-center space-x-2">
                         <Checkbox
@@ -2443,7 +2467,7 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                           onCheckedChange={(checked) => {
                             const currentValue = field.value || [];
                             if (checked) {
-                              field.onChange([[...currentValue, item]]);
+                              field.onChange([...currentValue, item]);
                             } else {
                               field.onChange(currentValue.filter(v => v !== item));
                             }
@@ -2457,6 +2481,23 @@ export function EditarConsultaForm({ consulta, onClose, onSuccess }: Props) {
                 </FormItem>
               )}
             />
+
+            {/* Campo condicional */}
+            {manejoSeleccionado === "Medicamentos" && (
+              <FormField
+                control={form.control}
+                name="detalle_medicamentos"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Detalle de medicamentos</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} rows={3} placeholder="Especifica medicamentos y dosis" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </TabsContent>
 
           {/* Indicaciones */}
