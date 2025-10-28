@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import React from 'react';
+import React, { useRef } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown } from 'lucide-react';
+import { Value } from '@radix-ui/react-select';
 
 export interface ConsultaFormData {
   id?: string;
@@ -89,9 +90,9 @@ export interface Sistemas {
 
 export interface SistemaDigestivo {
   na: boolean;
-  apetito: string;
-  estrenimiento: string;
-  flatulencia: string;
+  apetito: boolean;
+  estrenimiento: boolean;
+  flatulencia: boolean;
   ingesta_agua: string;
   vomito: boolean;
   veces_vomito: string;
@@ -258,6 +259,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabsEnabled, setTabsEnabled] = useState(false);
+  const consultaCargadaRef = useRef(false);
   
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
@@ -270,8 +272,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   const form = useForm<ConsultaFormData>({
     defaultValues: consulta ?? {
       id: '',
-      cliente_id: '',
-      mascota_id: '',
+      cliente_id: clienteSeleccionado || '',
+      mascota_id: mascotaSeleccionada || '',
       veterinario_id: '',
       fecha: new Date().toISOString().split('T')[0],
       motivo: '',
@@ -292,8 +294,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         },
   
         estado_general: {
-          vacunas: false,
-          desparasitacion: false,
+          vacunas: undefined,
+          desparasitacion: undefined,
           tipo_desparacitacion: [],
           actitud: '',
           temperatura: '',
@@ -317,14 +319,14 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         sistemas: {
           sistema_digestivo: {
             na: true,
-            apetito: '',
-            estrenimiento: '',
-            flatulencia: '',
+            apetito: undefined,
+            estrenimiento: undefined,
+            flatulencia: undefined,
             ingesta_agua: '',
-            vomito: false,
+            vomito: undefined,
             veces_vomito: '',
             aspecto_vomito: '',
-            defeca: false,
+            defeca: undefined,
             veces_defeca: '',
             aspecto_defeca: '',
           },
@@ -332,43 +334,43 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
             na: true,
             sarro: '',
             gingivitis: '',
-            sangrado: false,
-            halitosis: false,
-            hipersalivacion: false,
+            sangrado: undefined,
+            halitosis: undefined,
+            hipersalivacion: undefined,
           },
           nariz_faringe: {
             na: true,
-            descarga_nasal: false,
+            descarga_nasal: undefined,
             aspecto_descarga: '',
-            epistaxis: false,
+            epistaxis: undefined,
             resequedad: '',
           },
           sistema_respiratorio: {
             na: true,
-            tos: false,
+            tos: undefined,
             frecuencia_tos: '',
-            disnea: false,
+            disnea: undefined,
             frecuencia_disnea: '',
-            estornudos: false,
+            estornudos: undefined,
             frecuencia_estornudos: '',
           },
           sistema_urogenital: {
             na: true,
-            orina: false,
+            orina: undefined,
             frecuencia_orina: '',
             aspecto_orina: '',
-            castrado: false,
-            se_ha_cruzado: false,
-            ha_gestado: false,
+            castrado: undefined,
+            se_ha_cruzado: undefined,
+            ha_gestado: undefined,
             ultimo_parto: '',
             descarga_vulva_prepucio: '',
           },
           sistema_tegumentario: {
             na: true,
-            alopecia: false,
-            parasitos: false,
+            alopecia: undefined,
+            parasitos: undefined,
             tipo_parasitos: '',
-            lesiones: false,
+            lesiones: undefined,
             tipo_lesion: '',
             aspecto_lesion: '',
           },
@@ -380,29 +382,29 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           },
           sistema_nervioso: {
             na: true,
-            incordinacion: false,
-            golpes_cabeza: false,
+            incordinacion: undefined,
+            golpes_cabeza: undefined,
             dismetria: '',
             propiocepcion: '',
           },
           sistema_cardiaco: {
             na: true,
-            disnea: false,
-            cianosis: false,
-            fatiga: false,
+            disnea: undefined,
+            cianosis: undefined,
+            fatiga: undefined,
             frecuencia_fatiga: '',
-            tos_nocturna: false,
+            tos_nocturna: undefined,
             frecuencia_tos_nocturna: '',
           },
           oidos: {
             na: true,
             izq_der: '',
             descarga: '',
-            parasitos: false,
+            parasitos: undefined,
             tipo_parasitos: '',
-            mal_olor: false,
-            se_rasca: false,
-            escucha: false,
+            mal_olor: undefined,
+            se_rasca: undefined,
+            escucha: undefined,
           },
           ojos: {
             na: true,
@@ -449,41 +451,68 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
       actualizado_en: '',
     },
   });
-
-  useEffect(() => {
-    if (consulta?.id) {
-      // Si estamos editando una consulta existente, habilitar tabs
-      setTabsEnabled(true);
-      
-      // También cargar cliente y mascota si es necesario
-      if (consulta.mascota_id && !citaData) {
-        // Cargar datos de la mascota y cliente
-        axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/mascotas/${consulta.mascota_id}`, { withCredentials: true })
-          .then(res => {
-            const mascota = res.data;
-            setMascotaSeleccionada(mascota.id);
-            setClienteSeleccionado(mascota.cliente_id);
-          })
-          .catch(console.error);
-      }
-    }
-  }, [consulta, citaData]);
-
-  // Autocompletar desde datos de cita
-  useEffect(() => {
-    if (citaData) {
-      const mascota = citaData.mascota;
   
-      form.setValue('mascota_id', mascota.id);
-      form.setValue('motivo', citaData.motivo);
-      form.setValue('fecha', new Date().toISOString().split('T')[0]);
+  useEffect(() => {
+    // 🧩 Evitar ejecutar más de una vez
+    if (consultaCargadaRef.current) return;
+  
+    // 🧭 Caso: editar una consulta existente
+    if (consulta?.id && !citaData) {
+      consultaCargadaRef.current = true;
+      console.log("🩺 Editando consulta:", consulta);
+      setTabsEnabled(true);
+  
+      axios
+        .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/mascotas/${consulta.mascota_id}`, { withCredentials: true })
+        .then(async (res) => {
+          const mascota = res.data;
+  
+          // 🐾 Asignar datos de cliente y mascota
+          setClienteSeleccionado(mascota.cliente_id);
+          setMascotaSeleccionada(mascota.id);
+  
+          // 🐕 Cargar mascotas del cliente
+          const mascotasRes = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${mascota.cliente_id}/mascotas`,
+            { withCredentials: true }
+          );
+          setMascotas(mascotasRes.data);
+  
+          // 🧾 Cargar cliente para mostrar en el botón
+          const clienteRes = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${mascota.cliente_id}`,
+            { withCredentials: true }
+          );
+          setClientes([clienteRes.data]);
+  
+          // 🧠 Asignar valores al form
+          form.setValue("cliente_id", mascota.cliente_id);
+          form.setValue("mascota_id", mascota.id);
+          form.setValue("fecha", consulta.fecha?.split("T")[0] ?? new Date().toISOString().split("T")[0]);
+          form.setValue("motivo", consulta.motivo || "");
+          if (consulta.evaluacion_clinica) {
+            form.setValue("evaluacion_clinica", consulta.evaluacion_clinica);
+          }
+        })
+        .catch((err) => console.error("❌ Error cargando datos:", err));
+    }
+  
+    // 🧭 Caso: viene desde cita
+    else if (citaData) {
+      consultaCargadaRef.current = true;
+  
+      const mascota = citaData.mascota;
+      console.log("🗓️ Consulta desde cita:", citaData);
+  
+      form.setValue("mascota_id", mascota.id);
+      form.setValue("motivo", citaData.motivo);
+      form.setValue("fecha", new Date().toISOString().split("T")[0]);
   
       setClienteSeleccionado(mascota.cliente_id);
       setMascotaSeleccionada(mascota.id);
-  
       setTabsEnabled(true);
     }
-  }, [citaData, form]);
+  }, [consulta, citaData, form]);
   
   useEffect(() => {
     if (mascotaSeleccionada && !citaData) {
@@ -493,13 +522,32 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         })
         .then((res) => {
           const mascota = res.data;
+
           form.setValue('mascota_id', mascota.id);
+          form.setValue('evaluacion_clinica.datos_generales.raza', mascota.raza);
+          form.setValue('evaluacion_clinica.datos_generales.especie', mascota.especie['nombre']);
+          form.setValue('evaluacion_clinica.datos_generales.sexo', mascota.sexo);
+          form.setValue('evaluacion_clinica.datos_generales.edad', mascota.edad_aproximada);
+
           setClienteSeleccionado(mascota.cliente_id);
           setTabsEnabled(true);
         })
         .catch(console.error);
     }
   }, [mascotaSeleccionada, citaData, form]);
+
+  useEffect(() => {
+    if (mascotas.length > 0 && consulta?.mascota_id && !citaData) {
+      const existe = mascotas.some(m => m.id === consulta.mascota_id);
+      if (existe) {
+        console.log("✅ Mascota encontrada y seleccionada:", consulta.mascota_id);
+        setMascotaSeleccionada(consulta.mascota_id);
+        form.setValue("mascota_id", consulta.mascota_id);
+      } else {
+        console.warn("⚠️ Mascota no encontrada en el listado del cliente.");
+      }
+    }
+  }, [mascotas, consulta?.mascota_id, citaData, form]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -591,32 +639,188 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   const onSubmit = async (data: ConsultaFormData) => {
     setGuardando(true);
     setError(null);
-
+  
     try {
-      const { veterinario_id, creado_en, actualizado_en, ...payload } = data;
+      // Armar el objeto evaluacion_clinica agrupando los campos
+      const evaluacion_clinica = {
+        datos_generales: {
+          habitat:                data.evaluacion_clinica.datos_generales.habitat,
+          otras_mascotas_check:   data.evaluacion_clinica.datos_generales.otras_mascotas_check,
+          otras_mascotas:         data.evaluacion_clinica.datos_generales.otras_mascotas,
+          desde_cuando_mascota:   data.evaluacion_clinica.datos_generales.desde_cuando_mascota,
+          dieta:                  data.evaluacion_clinica.datos_generales.dieta,
+          historial_enfermedades: data.evaluacion_clinica.datos_generales.historial_enfermedades,
+          peso:                   data.evaluacion_clinica.datos_generales.peso
+        },
+        estado_general: {
+          vacunas:              data.evaluacion_clinica.estado_general.vacunas,
+          desparasitacion:      data.evaluacion_clinica.estado_general.desparasitacion,
+          tipo_desparasitacion: data.evaluacion_clinica.estado_general.tipo_desparacitacion,
+          actitud:              data.evaluacion_clinica.estado_general.actitud,
+          temperatura:          data.evaluacion_clinica.estado_general.temperatura,
+          fc:                   data.evaluacion_clinica.estado_general.fc,
+          fr:                   data.evaluacion_clinica.estado_general.fr,
+          sonido_cardiaco:      data.evaluacion_clinica.estado_general.sonido_cardiaco,
+          mucosas:              data.evaluacion_clinica.estado_general.mucosas,
+          reflejo_pupilar:      data.evaluacion_clinica.estado_general.reflejo_pupilar,
+          anisocoria:           data.evaluacion_clinica.estado_general.anisocoria,
+          nistagmo:             data.evaluacion_clinica.estado_general.nistagmo,
+          rf:                   data.evaluacion_clinica.estado_general.rf,
+          pe:                   data.evaluacion_clinica.estado_general.pe,
+          pop:                  data.evaluacion_clinica.estado_general.pop,
+          tllc:                 data.evaluacion_clinica.estado_general.tllc,
+          deshidratacion:       data.evaluacion_clinica.estado_general.deshidratacion,
+          condicion_corporal:   data.evaluacion_clinica.estado_general.condicion_corporal,
+          palpacion_abdominal:  data.evaluacion_clinica.estado_general.palpacion_abdominal,
+          historia_clinica:     data.evaluacion_clinica.estado_general.historia_clinica,
+        },
+        sistemas: {
+          sistema_digestivo: {
+            na:             data.evaluacion_clinica.sistemas.sistema_digestivo.na,
+            apetito:        data.evaluacion_clinica.sistemas.sistema_digestivo.apetito,
+            estrenimiento:  data.evaluacion_clinica.sistemas.sistema_digestivo.estrenimiento,
+            flatulencia:    data.evaluacion_clinica.sistemas.sistema_digestivo.flatulencia,
+            ingesta_agua:   data.evaluacion_clinica.sistemas.sistema_digestivo.ingesta_agua,
+            vomito:         data.evaluacion_clinica.sistemas.sistema_digestivo.vomito,
+            veces_vomito:   data.evaluacion_clinica.sistemas.sistema_digestivo.veces_vomito,
+            aspecto_vomito: data.evaluacion_clinica.sistemas.sistema_digestivo.aspecto_vomito,
+            defeca:         data.evaluacion_clinica.sistemas.sistema_digestivo.defeca,
+            veces_defeca:   data.evaluacion_clinica.sistemas.sistema_digestivo.veces_defeca,
+            aspecto:        data.evaluacion_clinica.sistemas.sistema_digestivo.aspecto_defeca,
+          },
+          cavidad_oral: {
+            na:               data.evaluacion_clinica.sistemas.cavidad_oral.na,
+            sarro:            data.evaluacion_clinica.sistemas.cavidad_oral.sarro,
+            gingivitis:       data.evaluacion_clinica.sistemas.cavidad_oral.gingivitis,
+            sangrado:         data.evaluacion_clinica.sistemas.cavidad_oral.sangrado,
+            halitosis:        data.evaluacion_clinica.sistemas.cavidad_oral.halitosis,
+            hipersalivacion:  data.evaluacion_clinica.sistemas.cavidad_oral.hipersalivacion,
+          },
+          nariz_faringe: {
+            na:               data.evaluacion_clinica.sistemas.nariz_faringe.na,
+            descarga_nasal:   data.evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal,
+            aspecto_descarga: data.evaluacion_clinica.sistemas.nariz_faringe.aspecto_descarga,
+            epistaxis:        data.evaluacion_clinica.sistemas.nariz_faringe.epistaxis,
+            resequedad:       data.evaluacion_clinica.sistemas.nariz_faringe.resequedad,
+          },
+          sistema_respiratorio: {
+            na:                     data.evaluacion_clinica.sistemas.sistema_respiratorio.na,
+            tos:                    data.evaluacion_clinica.sistemas.sistema_respiratorio.tos,
+            frecuencia_tos:         data.evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_tos,
+            disnea:                 data.evaluacion_clinica.sistemas.sistema_respiratorio.disnea,
+            frecuencia_disnea:      data.evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_disnea,
+            estornudos:             data.evaluacion_clinica.sistemas.sistema_respiratorio.estornudos,
+            frecuencia_estornudos:  data.evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_estornudos,
+          },
+          sistema_urogenital: {
+            na:                       data.evaluacion_clinica.sistemas.sistema_urogenital.na,
+            orina:                    data.evaluacion_clinica.sistemas.sistema_urogenital.orina,
+            frecuencia_orina:         data.evaluacion_clinica.sistemas.sistema_urogenital.frecuencia_orina,
+            aspecto_orina:            data.evaluacion_clinica.sistemas.sistema_urogenital.aspecto_orina,
+            castrado:                 data.evaluacion_clinica.sistemas.sistema_urogenital.castrado,
+            se_ha_cruzado:            data.evaluacion_clinica.sistemas.sistema_urogenital.se_ha_cruzado,
+            ha_gestado:               data.evaluacion_clinica.sistemas.sistema_urogenital.ha_gestado,
+            ultimo_parto:             data.evaluacion_clinica.sistemas.sistema_urogenital.ultimo_parto,
+            descarga_vulva_prepucio:  data.evaluacion_clinica.sistemas.sistema_urogenital.descarga_vulva_prepucio,
+          },
+          sistema_tegumentario: {
+            na:             data.evaluacion_clinica.sistemas.sistema_tegumentario.na,
+            alopecia:       data.evaluacion_clinica.sistemas.sistema_tegumentario.alopecia,
+            parasitos:      data.evaluacion_clinica.sistemas.sistema_tegumentario.parasitos,
+            tipo_parasitos: data.evaluacion_clinica.sistemas.sistema_tegumentario.tipo_parasitos,
+            lesiones:       data.evaluacion_clinica.sistemas.sistema_tegumentario.lesiones,
+            tipo_lesion:    data.evaluacion_clinica.sistemas.sistema_tegumentario.tipo_lesion,
+            aspecto_lesion: data.evaluacion_clinica.sistemas.sistema_tegumentario.aspecto_lesion,
+          },
+          sistema_muscoesqueletico: {
+            na:               data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.na,
+            movimiento:       data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.movimiento,
+            desde_cuando:     data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.desde_cuando,
+            miembro_afectado: data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.miembro_afectado,
+          },
+          sistema_nervioso: {
+            na:             data.evaluacion_clinica.sistemas.sistema_nervioso.na,
+            incordinacion:  data.evaluacion_clinica.sistemas.sistema_nervioso.incordinacion,
+            golpes_cabeza:  data.evaluacion_clinica.sistemas.sistema_nervioso.golpes_cabeza,
+            dismetria:      data.evaluacion_clinica.sistemas.sistema_nervioso.dismetria,
+            propiocepcion:  data.evaluacion_clinica.sistemas.sistema_nervioso.propiocepcion,
+          },
+          sistema_cardiaco: {
+            na:                       data.evaluacion_clinica.sistemas.sistema_cardiaco.na,
+            disnea:                   data.evaluacion_clinica.sistemas.sistema_cardiaco.disnea,
+            cianosis:                 data.evaluacion_clinica.sistemas.sistema_cardiaco.cianosis,
+            fatiga:                   data.evaluacion_clinica.sistemas.sistema_cardiaco.fatiga,
+            frecuencia_fatiga:        data.evaluacion_clinica.sistemas.sistema_cardiaco.frecuencia_fatiga,
+            tos_nocturna:             data.evaluacion_clinica.sistemas.sistema_cardiaco.tos_nocturna,
+            frecuencia_tos_nocturna:  data.evaluacion_clinica.sistemas.sistema_cardiaco.frecuencia_tos_nocturna,
+          },
+          oidos: {
+            na:             data.evaluacion_clinica.sistemas.oidos.na,
+            izq_der:        data.evaluacion_clinica.sistemas.oidos.izq_der,
+            descarga:       data.evaluacion_clinica.sistemas.oidos.descarga,
+            parasitos:      data.evaluacion_clinica.sistemas.oidos.parasitos,
+            tipo_parasitos: data.evaluacion_clinica.sistemas.oidos.tipo_parasitos,
+            mal_olor:       data.evaluacion_clinica.sistemas.oidos.mal_olor,
+            se_rasca:       data.evaluacion_clinica.sistemas.oidos.se_rasca,
+            escucha:        data.evaluacion_clinica.sistemas.oidos.escucha,
+          },
+          ojos: {
+            na:             data.evaluacion_clinica.sistemas.ojos.na,
+            izq_der:        data.evaluacion_clinica.sistemas.ojos.izq_der,
+            descarga:       data.evaluacion_clinica.sistemas.ojos.descarga,
+            schirmer:       data.evaluacion_clinica.sistemas.ojos.schirmer,
+            fluorescencia:  data.evaluacion_clinica.sistemas.ojos.fluorescencia,
+            observaciones:  data.evaluacion_clinica.sistemas.ojos.observaciones,
+          },
+
+        },
+        diagnostico: {
+          dx_presuntivo:        data.evaluacion_clinica.diagnostico.dx_presuntivo,
+          dx_diferencial:       data.evaluacion_clinica.diagnostico.dx_diferencial,
+          examenes_laboratorio: data.evaluacion_clinica.diagnostico.examenes_laboratorio,
+          manejo:               data.evaluacion_clinica.diagnostico.manejo,
+        },
+        indicaciones: {
+          indicaciones: data.evaluacion_clinica.indicaciones.indicaciones,
+          proxima_cita: data.evaluacion_clinica.indicaciones.proxima_cita,
+          notas:        data.evaluacion_clinica.indicaciones.notas,
+        },
+      };
+  
+      // Payload principal (solo los campos reales de la tabla)
+      const payload = {
+        cliente_id: clienteSeleccionado, // viene del estado
+        mascota_id: data.mascota_id,
+        motivo: data.motivo,
+        fecha: new Date(data.fecha),
+        evaluacion_clinica, // el JSON completo
+      };
+  
+      // Crear o actualizar según corresponda
       if (consulta?.id) {
         await axios.patch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/consultas/${consulta.id}`,
           payload,
           { withCredentials: true }
         );
-        onSuccess('Consulta actualizada');
+        onSuccess("Consulta actualizada");
       } else {
         await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/consultas`,
           payload,
           { withCredentials: true }
         );
-        onSuccess('Consulta creada');
+        onSuccess("Consulta creada");
       }
+  
       onClose();
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Error al guardar consulta');
+      setError(e.response?.data?.message || "Error al guardar consulta");
     } finally {
       setGuardando(false);
     }
   };
-
+  
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -637,34 +841,40 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 <div>
                   <Label>Cliente</Label>
                   
-                  <Popover open={clientesOpen} onOpenChange={(open) => {
-                    setClientesOpen(open);
-                    
-                    // Cuando se abre el popover, resetear todo
-                    if (open) {
-                      setClienteSeleccionado('');
-                      setMascotaSeleccionada('');
-                      setMascotas([]);
-                      setClientesSearch('');
-                      setTabsEnabled(false);
-                      
-                      // También limpiar los valores del formulario
-                      form.setValue('mascota_id', '');
-                      form.setValue('cliente_id', '');
-                      form.setValue('evaluacion_clinica.datos_generales.raza', '');
-                      form.setValue('evaluacion_clinica.datos_generales.especie', '');
-                      form.setValue('evaluacion_clinica.datos_generales.sexo', '');
-                      form.setValue('evaluacion_clinica.datos_generales.edad', '');
-                    }
-                  }}>
+                  <Popover
+                    open={clientesOpen}
+                    onOpenChange={(open) => {
+                      setClientesOpen(open);
+
+                      // ⚠️ Solo limpiar si no hay una consulta activa (nueva, no edición)
+                      if (open && !consulta?.id && !citaData) {
+                        console.log("⚠️ Limpiando selección (nueva consulta)");
+                        setClienteSeleccionado('');
+                        setMascotaSeleccionada('');
+                        setMascotas([]);
+                        setClientesSearch('');
+                        setTabsEnabled(false);
+
+                        form.setValue('mascota_id', '');
+                        form.setValue('cliente_id', '');
+                        form.setValue('evaluacion_clinica.datos_generales.raza', '');
+                        form.setValue('evaluacion_clinica.datos_generales.especie', '');
+                        form.setValue('evaluacion_clinica.datos_generales.sexo', '');
+                        form.setValue('evaluacion_clinica.datos_generales.edad', '');
+                      }
+                    }}
+                  >
+
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className="w-full justify-between"
                       >
+                        
                         {clienteSeleccionado 
                           ? clientes.find(c => c.id === clienteSeleccionado)?.nombre_completo 
                           : "Seleccionar cliente..."}
+                          
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
@@ -721,9 +931,12 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
 
                 <div>
                   <Label>Mascota</Label>
-                  <Select 
-                    value={mascotaSeleccionada} 
-                    onValueChange={setMascotaSeleccionada}
+                  <Select
+                    value={mascotaSeleccionada}
+                    onValueChange={(value) => {
+                      setMascotaSeleccionada(value);
+                      form.setValue('mascota_id', value);
+                    }}
                     disabled={!clienteSeleccionado}
                   >
                     <SelectTrigger>
@@ -736,7 +949,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         </SelectItem>
                       ))}
                     </SelectContent>
-                  </Select>
+                  </Select> 
                 </div>
 
                 <div>
@@ -746,7 +959,14 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Fecha</FormLabel>
-                        <FormControl><Input type="date" {...field} /></FormControl>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            value={field.value ? field.value.split("T")[0] : ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -920,7 +1140,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormItem>
                     <FormLabel>Motivo de consulta</FormLabel>
                     <FormControl>
-                      <Input {...field} readOnly={citaData !== undefined} />
+                      <Input {...field} readOnly={ citaData ? true : false } />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -962,7 +1182,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vacunas</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value === 'si')
+                      }}
+                      defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                      disabled={!tabsEnabled}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione" />
@@ -984,7 +1210,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Desparasitación</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value ? 'Si' : 'No'} disabled={!tabsEnabled}>
+                    <Select
+                      onValueChange={(value) =>{
+                        field.onChange(value === 'si')
+                      }}
+                      defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                      disabled={!tabsEnabled}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione" />
@@ -1141,7 +1373,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Reflejo Pupilar</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select
+                      onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1372,7 +1605,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     render={({ field }) => (
                       <FormItem>
                           <FormLabel>Apetito</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                          <Select
+                          onValueChange={(value) => {
+                            field.onChange(value === 'si')
+                          }}
+                          defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                          disabled={!tabsEnabled}
+                          >
                           <FormControl>
                               <SelectTrigger>
                               <SelectValue placeholder="Seleccione" />
@@ -1394,7 +1633,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     render={({ field }) => (
                       <FormItem>
                           <FormLabel>Estreñimiento</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'sí')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                           <FormControl>
                               <SelectTrigger>
                               <SelectValue placeholder="Seleccione" />
@@ -1416,7 +1661,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     render={({ field }) => (
                       <FormItem>
                           <FormLabel>Flatulencia</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                           <FormControl>
                               <SelectTrigger>
                               <SelectValue placeholder="Seleccione" />
@@ -1463,7 +1714,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Vómito</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value ? (field.value == true ? 'Sí' : 'No') : 'Seleccione'} disabled={!tabsEnabled}>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value === 'si')
+                        }}
+                        defaultValue={field.value === true ? 'Sí' : field.value == false ? 'No' : ''}
+                        disabled={!tabsEnabled}
+                      >
                         <FormControl>
                           <SelectTrigger>
                           <SelectValue placeholder="Seleccione" />
@@ -1478,33 +1735,29 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     </FormItem>
                     )}
                   />
-                  {form.watch('evaluacion_clinica.sistemas.sistema_digestivo.vomito') === true && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="evaluacion_clinica.sistemas.sistema_digestivo.veces_vomito"
-                        render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Veces por día</FormLabel>
-                          <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                        )}
-                      />
+                  <FormField
+                    control={form.control}
+                    name="evaluacion_clinica.sistemas.sistema_digestivo.veces_vomito"
+                    render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Veces por día</FormLabel>
+                      <FormControl><Input {...field} disabled={form.watch('evaluacion_clinica.sistemas.sistema_digestivo.vomito') !== true || !tabsEnabled} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                    )}
+                  />
 
-                      <FormField
-                        control={form.control}
-                        name="evaluacion_clinica.sistemas.sistema_digestivo.aspecto_vomito"
-                        render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Aspecto</FormLabel>
-                          <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
+                  <FormField
+                    control={form.control}
+                    name="evaluacion_clinica.sistemas.sistema_digestivo.aspecto_vomito"
+                    render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Aspecto</FormLabel>
+                      <FormControl><Input {...field} disabled={form.watch('evaluacion_clinica.sistemas.sistema_digestivo.vomito') !== true || !tabsEnabled} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-2">
@@ -1514,7 +1767,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Defeca</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value === 'si')
+                        }}
+                        defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                        disabled={!tabsEnabled}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Seleccione" />
@@ -1529,33 +1788,29 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     </FormItem>
                     )}
                   />
-                  {form.watch('evaluacion_clinica.sistemas.sistema_digestivo.defeca') === true && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="evaluacion_clinica.sistemas.sistema_digestivo.veces_defeca"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Veces por día</FormLabel>
-                            <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                      />
+                  <FormField
+                    control={form.control}
+                    name="evaluacion_clinica.sistemas.sistema_digestivo.veces_defeca"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Veces por día</FormLabel>
+                        <FormControl><Input {...field} disabled={form.watch('evaluacion_clinica.sistemas.sistema_digestivo.defeca') !== true || !tabsEnabled} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                  />
 
-                      <FormField
-                        control={form.control}
-                        name="evaluacion_clinica.sistemas.sistema_digestivo.aspecto_defeca"
-                        render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Aspecto</FormLabel>
-                          <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
+                  <FormField
+                    control={form.control}
+                    name="evaluacion_clinica.sistemas.sistema_digestivo.aspecto_defeca"
+                    render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Aspecto</FormLabel>
+                      <FormControl><Input {...field} disabled={form.watch('evaluacion_clinica.sistemas.sistema_digestivo.defeca') !== true || !tabsEnabled} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                    )}
+                  />
                 </div>
               </>
               )}
@@ -1622,7 +1877,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sangrado</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1644,7 +1905,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Halitosis</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1666,7 +1933,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hipersalivación</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1723,7 +1996,12 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Descarga nasal</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1765,7 +2043,12 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Epistaxis</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1834,7 +2117,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tos</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1868,7 +2157,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Disnea</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1901,7 +2196,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estornudos</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -1970,7 +2271,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Orina</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => { 
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2014,7 +2321,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Castrado</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2036,7 +2349,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Se ha cruzado</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2058,7 +2377,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Ha estado gestado</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2137,7 +2462,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Alopecia</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2159,7 +2490,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Parasitos</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2203,7 +2540,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Lesiones</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2356,7 +2699,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Incordinación</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2378,7 +2727,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Golpes en cabeza</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2460,7 +2815,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Disnea</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2482,7 +2843,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Cianosis</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2504,7 +2871,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Fatiga</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2538,7 +2911,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tos nocturna</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2620,7 +2999,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Parásitos</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2653,7 +3038,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Mal olor</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2675,7 +3066,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Se rasca</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2697,7 +3094,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Escucha</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value ? 'Sí' : 'No'} disabled={!tabsEnabled}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value === 'si')
+                            }}
+                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            disabled={!tabsEnabled}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2843,7 +3246,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       <Checkbox
                         id="lab_hemograma"
                         checked={field.value?.hemograma}
-                        onCheckedChange={(checked) => {
+                        onCheckedChange={(checked: boolean) => {
                           field.onChange({
                             ...field.value,
                             hemograma: checked
@@ -2853,11 +3256,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       />
                       <label htmlFor="lab_hemograma">Hemograma</label>
                     </div>
-                  </div>
+
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="lab_quimica_sanguinea"
-                        checked={field.value?.hemograma}
+                        checked={field.value?.quimica_sanguinea}
                         onCheckedChange={(checked) => {
                           field.onChange({
                             ...field.value,
@@ -2868,11 +3271,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       />
                       <label htmlFor="lab_quimica_sanguinea">Química Sanguínea</label>
                     </div>
-                  <div className="grid grid-cols-4 gap-2">
+
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="lab_urianalisis"
-                        checked={field.value?.hemograma}
+                        checked={field.value?.urianalisis}
                         onCheckedChange={(checked) => {
                           field.onChange({
                             ...field.value,
@@ -2883,12 +3286,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       />
                       <label htmlFor="lab_urianalisis">Urianálisis</label>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
+
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="lab_coprologico"
-                        checked={field.value?.hemograma}
+                        checked={field.value?.coprologico}
                         onCheckedChange={(checked) => {
                           field.onChange({
                             ...field.value,
@@ -2899,12 +3301,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       />
                       <label htmlFor="lab_coprologico">Coprológico</label>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
+                      
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="lab_raspado_piel"
-                        checked={field.value?.hemograma}
+                        checked={field.value?.raspado_piel}
                         onCheckedChange={(checked) => {
                           field.onChange({
                             ...field.value,
@@ -2915,12 +3316,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       />
                       <label htmlFor="lab_raspado_piel">Raspado de piel</label>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
+                    
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="lab_citologia"
-                        checked={field.value?.hemograma}
+                        checked={field.value?.citologia}
                         onCheckedChange={(checked) => {
                           field.onChange({
                             ...field.value,
@@ -2931,12 +3331,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       />
                       <label htmlFor="lab_citologia">Citología</label>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
+                    
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="lab_otro"
-                        checked={field.value?.hemograma}
+                        checked={field.value?.otro}
                         onCheckedChange={(checked) => {
                           field.onChange({
                             ...field.value,
@@ -2981,7 +3380,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       <Checkbox
                         id="manejo_hospitalizacion"
                         checked={field.value?.hospitalizacion}
-                        onCheckedChange={(checked) => {
+                        onCheckedChange={(checked: boolean) => {
                           field.onChange({
                             ...field.value,
                             hospitalizacion: checked
@@ -3056,53 +3455,54 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       <label htmlFor="manejo_otro">Otro</label>
                     </div>
                   </div>
+
+                  {/* Campos condicionales */}
+                  {form.watch("evaluacion_clinica.diagnostico.manejo.medicamentos") && (
+                    <FormField
+                      control={form.control}
+                      name="evaluacion_clinica.diagnostico.manejo.especifique_medicamentos"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Detalle de medicamentos</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              rows={3} 
+                              placeholder="Especifique medicamentos y dosis" 
+                              disabled={!tabsEnabled} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {form.watch("evaluacion_clinica.diagnostico.manejo.otro") && (
+                    <FormField
+                      control={form.control}
+                      name="evaluacion_clinica.diagnostico.manejo.especifique_otro"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Detalle de manejo</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              rows={3} 
+                              placeholder="Especifique el manejo indicado" 
+                              disabled={!tabsEnabled} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            {/* Campos condicionales */}
-            {form.watch("evaluacion_clinica.diagnostico.manejo.medicamentos") && (
-              <FormField
-                control={form.control}
-                name="evaluacion_clinica.diagnostico.manejo.especifique_medicamentos"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Detalle de medicamentos</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        rows={3} 
-                        placeholder="Especifica medicamentos y dosis" 
-                        disabled={!tabsEnabled} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {form.watch("evaluacion_clinica.diagnostico.manejo.otro") && (
-              <FormField
-                control={form.control}
-                name="evaluacion_clinica.diagnostico.manejo.especifique_otro"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Detalle de manejo</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        rows={3} 
-                        placeholder="Especifica el manejo dado" 
-                        disabled={!tabsEnabled} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
           </TabsContent>
 
           {/* Indicaciones */}

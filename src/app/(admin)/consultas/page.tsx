@@ -4,26 +4,14 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { EditarConsultaForm } from '@/components/EditarConsultaForm';
+import { EditarConsultaForm, ConsultaFormData } from '@/components/EditarConsultaForm';
 import { useSearchParams } from 'next/navigation';
 
 interface ConsultaResumen {
     id: string
-    motivo_consulta: string
+    motivo: string
     fecha: string
     mascota: { nombre: string }
-}
-
-export interface ConsultaFormData {
-    id?: string
-    mascota_id: string
-    motivo_consulta: string
-    historia_clinica?: string
-    diagnostico_presuntivo?: string
-    diagnostico_diferencial?: string
-    indicaciones?: string
-    proxima_cita?: string
-    notas?: string
 }
 
 export default function ConsultasPage() {
@@ -31,7 +19,7 @@ export default function ConsultasPage() {
   const citaId = searchParams.get('cita_id');
   
   const [consultas, setConsultas] = useState<ConsultaResumen[]>([]);
-  const [seleccionada, setSeleccionada] = useState<ConsultaResumen | null>(null);
+  const [seleccionada, setSeleccionada] = useState<ConsultaFormData | null>(null);
   const [open, setOpen] = useState(false);
   const [citaData, setCitaData] = useState<any>(null);
 
@@ -51,16 +39,14 @@ export default function ConsultasPage() {
             { withCredentials: true }
           );
           setCitaData(data);
-          setOpen(true); // Abrir automáticamente el formulario
+          setOpen(true);
         } catch (error) {
           console.error('Error al cargar datos de la cita:', error);
         }
       }
     };
 
-    if (citaId) {
-      cargarCitaData();
-    }
+    if (citaId) cargarCitaData();
   }, [citaId]);
 
   useEffect(() => { 
@@ -73,10 +59,18 @@ export default function ConsultasPage() {
     setOpen(true);
   };
 
-  const handleEditarConsulta = (consulta: ConsultaResumen) => {
-    setSeleccionada(consulta);
-    setCitaData(null);
-    setOpen(true);
+  // 🔹 Nuevo handleEditarConsulta con fetch real
+  const handleEditarConsulta = async (consultaId: string) => {
+    try {
+      const { data } = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/consultas/${consultaId}`,
+        { withCredentials: true }
+      );
+      setSeleccionada(data);
+      setOpen(true);
+    } catch (error) {
+      console.error('Error al cargar consulta:', error);
+    }
   };
 
   return (
@@ -97,8 +91,10 @@ export default function ConsultasPage() {
             <tr key={c.id}>
               <td>{new Date(c.fecha).toLocaleDateString()}</td>
               <td>{c.mascota?.nombre}</td>
-              <td>{c.motivo_consulta}</td>
-              <td><Button size="sm" onClick={() => handleEditarConsulta(c)}>Editar</Button></td>
+              <td>{c.motivo}</td>
+              <td>
+                <Button size="sm" onClick={() => handleEditarConsulta(c.id)}>Editar</Button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -106,7 +102,7 @@ export default function ConsultasPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl min-w-[80vw] w-full">
-            <DialogHeader className="px-1 pt-1 pb-1 border-b">
+          <DialogHeader className="px-1 pt-1 pb-1 border-b">
             <DialogTitle>
               {seleccionada ? 'Editar consulta' : citaData ? 'Consulta desde cita' : 'Nueva consulta'}
             </DialogTitle>
@@ -114,27 +110,19 @@ export default function ConsultasPage() {
           </DialogHeader>
           
           <div className="max-h-[80vh] overflow-y-auto pr-2">
-            <EditarConsultaForm
-              consulta={
-                seleccionada
-                ? {
-                    id: seleccionada.id,
-                    mascota_id: '',
-                    motivo_consulta: seleccionada.motivo_consulta,
-                  }
-                : null
-              }
-              citaData={citaData}
-              onSuccess={() => {
-                cargar();
-                setOpen(false);
-                setCitaData(null);
-              }}
-              onClose={() => {
-                setOpen(false);
-                setCitaData(null);
-              }}
-            />
+          <EditarConsultaForm
+            consulta={seleccionada ?? {} as ConsultaFormData}
+            citaData={citaData}
+            onSuccess={() => {
+              cargar();
+              setOpen(false);
+              setCitaData(null);
+            }}
+            onClose={() => {
+              setOpen(false);
+              setCitaData(null);
+            }}
+          />
           </div>
         </DialogContent>
       </Dialog>
