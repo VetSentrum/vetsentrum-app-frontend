@@ -6,6 +6,16 @@
   import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
   import { Button } from '@/components/ui/button';
   import { EditarMascotaForm } from '@/components/EditarMascotaForm';
+  import { EditarClienteForm } from '@/components/EditarClienteForm';
+
+  interface ClienteDetalle {
+    id: string;
+    nombre_completo: string;
+    telefono: string;
+    email?: string;
+    direccion?: string;
+    activo: boolean;
+  }
 
   interface Mascota {
     id: string;
@@ -39,6 +49,8 @@
     const [sortField, setSortField] = useState<'expediente' | 'nombre' | 'cliente_nombre'>('expediente');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [usuario, setUsuario] = useState<{ id: string; rol: "admin" | "recepcion" | "veterinario" } | null>(null);
+    const [clienteSeleccionado, setClienteSeleccionado]   = useState<ClienteDetalle | null>(null);
+    const [modalClienteAbierto, setModalClienteAbierto]   = useState(false);
 
     const cargarMascotas = useCallback(async () => {
       setLoading(true);
@@ -78,6 +90,24 @@
     const cerrarModal = () => {
       setModalAbierto(false);
       setMascotaSeleccionada(null);
+    };
+
+    const abrirCliente = async (clienteId: string) => {
+      try {
+        const { data } = await axios.get<ClienteDetalle>(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${clienteId}`,
+          { withCredentials: true }
+        );
+        setClienteSeleccionado(data);
+        setModalClienteAbierto(true);
+      } catch (error) {
+        console.error('Error al cargar cliente:', error);
+      }
+    };
+
+    const cerrarModalCliente = () => {
+      setModalClienteAbierto(false);
+      setClienteSeleccionado(null);
     };
 
     const handleSort = (field: 'expediente' | 'nombre' | 'cliente_nombre') => {
@@ -208,14 +238,12 @@
                   <td className="p-2">
                     {mascota.cliente_nombre ? (
                       <button
-                        className="text-blue-600 underline"
-                        onClick={() => {
-                          router.push(`/clientes?cliente=${mascota.cliente_id}`);
-                        }}
+                        onClick={() => abrirCliente(mascota.cliente_id)}
+                        className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-0.5 hover:bg-blue-200 transition-colors cursor-pointer"
                       >
                         {mascota.cliente_nombre}
                       </button>
-                    ) : '—'}
+                    ) : <span className="text-gray-400 text-sm">—</span>}
                   </td>
                   <td className="p-2 flex gap-2">
                     {rolActual === 'veterinario' && (
@@ -280,6 +308,25 @@
                 }}
               />
             </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={modalClienteAbierto} onOpenChange={cerrarModalCliente}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-center font-medium">
+                {clienteSeleccionado?.nombre_completo}
+              </DialogTitle>
+              <DialogDescription></DialogDescription>
+            </DialogHeader>
+            <EditarClienteForm
+              cliente={clienteSeleccionado}
+              onClose={cerrarModalCliente}
+              onSuccess={() => {
+                cargarMascotas();
+                cerrarModalCliente();
+              }}
+            />
           </DialogContent>
         </Dialog>
       </main>

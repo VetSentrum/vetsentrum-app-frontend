@@ -59,6 +59,11 @@ interface Props {
 
 export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [clientesSearch, setClientesSearch] = useState('')
+  const [clientesOpen, setClientesOpen] = useState(false)
+  const [clientesLoading, setClientesLoading] = useState(false)
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null)
+
   const [mensaje, setMensaje] = useState<string | null>(null)
   const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [error, setError] = useState<string | null>(null)
@@ -80,19 +85,38 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
   })
 
   useEffect(() => {
-    const cargarClientes = async () => {
-      try {
-        const { data } = await axios.get<Cliente[]>(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes?inactivos=false`,
-          { withCredentials: true }
-        )
-        setClientes(data)
-      } catch (e) {
-        console.error('Error cargando clientes', e)
+    let timeoutId: NodeJS.Timeout
+
+    if (clientesOpen) {
+      if (clientesSearch.trim().length < 3) {
+        setClientes([])
+        return
       }
+
+      setClientesLoading(true)
+      timeoutId = setTimeout(() => {
+        buscarClientes(clientesSearch)
+      }, 400)
     }
-    cargarClientes()
-  }, [])
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [clientesOpen, clientesSearch])
+
+  useEffect(() => {
+    if (mascota?.cliente_id) {
+      axios
+        .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${mascota.cliente_id}`, {
+          withCredentials: true,
+        })
+        .then(res => {
+          setClientes([res.data])
+          setClienteSeleccionado(res.data)
+          form.setValue('cliente_id', res.data.id)
+        })
+    }
+  }, [mascota])
 
   useEffect(() => {
     const cargarEspecies = async () => {
@@ -136,6 +160,15 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
 
   const rolActual = usuario?.rol;
 
+  const handleClienteSeleccionado = (cliente: Cliente) => {
+    setClienteSeleccionado(cliente)
+    form.setValue('cliente_id', cliente.id)
+
+    setClientesOpen(false)
+    setClientesSearch('')
+    setClientes([])
+  }
+
   const onSubmit = async (data: FormData) => {
     setError(null)
     setMensaje(null)
@@ -173,6 +206,20 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
     
       setError(mensajeError);
     }
+  }
+
+  const buscarClientes = (search: string) => {
+    const searchTrimmed = search.trim()
+    if (searchTrimmed.length < 3) return
+
+    axios
+      .get<Cliente[]>(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes?search=${encodeURIComponent(searchTrimmed)}&limit=50`,
+        { withCredentials: true }
+      )
+      .then(res => setClientes(res.data))
+      .catch(() => setClientes([]))
+      .finally(() => setClientesLoading(false))
   }
 
   function calcularEdadActual(
@@ -427,26 +474,46 @@ export function EditarMascotaForm({ mascota, onClose, onSuccess }: Props) {
         <FormField
           control={form.control}
           name="cliente_id"
-          render={({ field }) => (
-            <FormItem>
+          render={() => (
+            <FormItem className="relative">
               <FormLabel>Cliente</FormLabel>
-              <FormControl>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nombre_completo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
+
+              {/* Trigger */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => setClientesOpen(true)}
+              >
+                {clienteSeleccionado
+                  ? clienteSeleccionado.nombre_completo
+                  : 'Buscar cliente'}
+              </Button>
+
+              {/* Dropdown — absolute so it overlays instead of shifting the form */}
+              {clientesOpen && (
+                <div className="absolute z-50 w-full border rounded mt-1 p-2 bg-white shadow-md space-y-2">
+                  <Input
+                    placeholder="Escribe al menos 3 letras..."
+                    value={clientesSearch}
+                    onChange={e => setClientesSearch(e.target.value)}
+                    autoFocus
+                  />
+
+                  {clientesLoading && <p className="text-sm text-gray-500">Buscando...</p>}
+
+                  {clientes.map(c => (
+                    <div
+                      key={c.id}
+                      className="p-2 hover:bg-gray-100 cursor-pointer rounded"
+                      onClick={() => handleClienteSeleccionado(c)}
+                    >
+                      {c.nombre_completo}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <FormMessage />
             </FormItem>
           )}
