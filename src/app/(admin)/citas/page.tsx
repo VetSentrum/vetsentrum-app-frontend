@@ -48,6 +48,12 @@ export default function CitasPage() {
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const [mostrarCanceladas, setMostrarCanceladas] = useState(false)
 
+  const hoy = new Date()
+  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
+  const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0]
+  const [fechaDesde, setFechaDesde] = useState(primerDiaMes)
+  const [fechaHasta, setFechaHasta] = useState(ultimoDiaMes)
+
   // ---- fetch de citas ----
   const fetchCitas = async () => {
     try {
@@ -117,6 +123,10 @@ export default function CitasPage() {
       c.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       c.mascota_nombre.toLowerCase().includes(busqueda.toLowerCase())
 
+    const fechaCita = new Date(c.fecha)
+    if (fechaDesde && fechaCita < new Date(fechaDesde + 'T00:00:00.000Z')) return false
+    if (fechaHasta && fechaCita > new Date(fechaHasta + 'T23:59:59.999Z')) return false
+
     const esPendiente = c.estado === 'pendiente'
     const esCompletada = c.estado === 'completada'
     const esCancelada = c.estado === 'cancelada'
@@ -168,6 +178,22 @@ export default function CitasPage() {
             />
             Canceladas
           </label>
+          <div className="flex items-center gap-1 text-sm">
+            <span>Del</span>
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => { setFechaDesde(e.target.value); setPagina(1) }}
+              className="border rounded px-2 py-1 text-sm"
+            />
+            <span>al</span>
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => { setFechaHasta(e.target.value); setPagina(1) }}
+              className="border rounded px-2 py-1 text-sm"
+            />
+          </div>
           <Button onClick={() => abrirModal(null)}>Nueva Cita</Button>
         </div>
       </div>

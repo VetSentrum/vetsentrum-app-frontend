@@ -5,11 +5,26 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { EditarClienteForm } from '@/components/EditarClienteForm';
+import { EditarMascotaForm } from '@/components/EditarMascotaForm';
 import axios from 'axios';
 
 interface Mascota {
   id: string;
   nombre: string;
+}
+
+interface MascotaDetalle {
+  id: string;
+  nombre: string;
+  expediente?: number;
+  especie_id: number;
+  raza: string;
+  sexo: 'Macho' | 'Hembra';
+  edad_aproximada?: number;
+  esterilizado: boolean;
+  peso: number;
+  cliente_id: string;
+  fecha_creacion: Date;
 }
 
 interface Cliente {
@@ -31,25 +46,38 @@ export default function ClientesPage() {
   const [mensajeGlobal, setMensajeGlobal]             = useState<string | null>(null);
   const [mostrarInactivos, setMostrarInactivos]       = useState(false);
   const [busqueda, setBusqueda]                       = useState('');
-  const [loading, setLoading]                         = useState(true);
+  const [busquedaDebounced, setBusquedaDebounced]     = useState('');
+  const [loading, setLoading]                         = useState(false);
+  const [initialLoading, setInitialLoading]           = useState(true);
   const [pagina, setPagina]                           = useState(1);
   const [porPagina, setPorPagina]                     = useState(10);
   const [usuario, setUsuario] = useState<{ id: string; rol: "admin" | "recepcion" | "veterinario" } | null>(null);
+  const [mascotaSeleccionada, setMascotaSeleccionada]   = useState<MascotaDetalle | null>(null);
+  const [modalMascotaAbierto, setModalMascotaAbierto]   = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBusquedaDebounced(busqueda), 400);
+    return () => clearTimeout(timer);
+  }, [busqueda]);
 
   const cargarClientes = useCallback(async () => {
     setLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes?inactivos=${mostrarInactivos}`
-      const { data } = await axios.get<Cliente[]>(url, { withCredentials: true });
-
+      const params = new URLSearchParams({ inactivos: String(mostrarInactivos), limit: '9999' });
+      if (busquedaDebounced) params.set('search', busquedaDebounced);
+      const { data } = await axios.get<Cliente[]>(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes?${params}`,
+        { withCredentials: true }
+      );
       setClientes(data);
     } catch (error) {
       console.error(error);
       router.push('/login');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  }, [mostrarInactivos, router]);
+  }, [mostrarInactivos, busquedaDebounced, router]);
 
   useEffect(() => {
     axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
@@ -62,7 +90,7 @@ export default function ClientesPage() {
   }, [cargarClientes]);
 
   useEffect(() => {
-    if (!loading) {
+    if (!initialLoading) {
       const clienteId = searchParams.get('cliente');
       if (clienteId) {
         const cliente = clientes.find(c => c.id === clienteId);
@@ -73,7 +101,7 @@ export default function ClientesPage() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda]);
+  }, [busquedaDebounced]);
 
   const rolActual = usuario?.rol;
 
@@ -86,16 +114,28 @@ export default function ClientesPage() {
     setClienteSeleccionado(null);
   };
 
-  const clientesFiltrados = clientes.filter(c =>
-    c.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.telefono.includes(busqueda) ||
-    (c.email?.toLowerCase().includes(busqueda.toLowerCase()) ?? false)
-  );
-  
-  const totalPaginas = Math.ceil(clientesFiltrados.length / porPagina);
-  const clientesPaginados = clientesFiltrados.slice((pagina - 1) * porPagina, pagina * porPagina);
+  const abrirMascota = async (mascotaId: string) => {
+    try {
+      const { data } = await axios.get<MascotaDetalle>(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/mascotas/${mascotaId}`,
+        { withCredentials: true }
+      );
+      setMascotaSeleccionada(data);
+      setModalMascotaAbierto(true);
+    } catch (error) {
+      console.error('Error al cargar mascota:', error);
+    }
+  };
 
-  if (loading) return <p>Cargando clientes...</p>;
+  const cerrarModalMascota = () => {
+    setModalMascotaAbierto(false);
+    setMascotaSeleccionada(null);
+  };
+
+  const totalPaginas = Math.ceil(clientes.length / porPagina);
+  const clientesPaginados = clientes.slice((pagina - 1) * porPagina, pagina * porPagina);
+
+  if (initialLoading) return <p>Cargando clientes...</p>;
 
   return (
     <main className="max-w-6xl mx-auto mt-10">
@@ -153,9 +193,21 @@ export default function ClientesPage() {
                 <td className="p-2">{cliente.email}</td>
                 <td className="p-2">{cliente.direccion}</td>
                 <td className="p-2">
-                  <Button size="sm" variant="outline" onClick={() => router.push(`/mascotas?cliente=${cliente.id}`)}>
-                    Ver
-                  </Button>
+                  <div className="flex flex-wrap gap-1">
+                    {(cliente.mascotas ?? []).length === 0 ? (
+                      <span className="text-gray-400 text-sm">—</span>
+                    ) : (
+                      (cliente.mascotas ?? []).map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => abrirMascota(m.id)}
+                          className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-0.5 hover:bg-blue-200 transition-colors cursor-pointer"
+                        >
+                          {m.nombre}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </td>
                 <td className="p-2 flex gap-2">
                   {/* Veterinario: botón deshabilitado */}
@@ -229,6 +281,24 @@ export default function ClientesPage() {
             onSuccess={(mensaje: string) => {
               setMensajeGlobal(mensaje);
               cargarClientes();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={modalMascotaAbierto} onOpenChange={cerrarModalMascota}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center font-medium">
+              {mascotaSeleccionada?.nombre}
+            </DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
+          <EditarMascotaForm
+            mascota={mascotaSeleccionada}
+            onClose={cerrarModalMascota}
+            onSuccess={() => {
+              cargarClientes();
+              cerrarModalMascota();
             }}
           />
         </DialogContent>

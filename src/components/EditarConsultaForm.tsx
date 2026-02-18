@@ -54,7 +54,7 @@ export interface DatosGenerales {
 export interface EstadoGeneral {
   vacunas: boolean;
   desparasitacion: boolean;
-  tipo_desparacitacion: string[];
+  tipo_desparasitacion: string[];
   actitud: string;
   temperatura: string;
   fc: string;
@@ -269,6 +269,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   const [clientesSearch, setClientesSearch] = useState('');
   const [clientesLoading, setClientesLoading] = useState(false);
   
+  
   const form = useForm<ConsultaFormData>({
     defaultValues: consulta ?? {
       id: '',
@@ -294,9 +295,9 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         },
   
         estado_general: {
-          vacunas: undefined,
-          desparasitacion: undefined,
-          tipo_desparacitacion: [],
+          vacunas: true,
+          desparasitacion: undefined, 
+          tipo_desparasitacion: [],
           actitud: '',
           temperatura: '',
           fc: '',
@@ -317,103 +318,17 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         },
   
         sistemas: {
-          sistema_digestivo: {
-            na: true,
-            apetito: undefined,
-            estrenimiento: undefined,
-            flatulencia: undefined,
-            ingesta_agua: '',
-            vomito: undefined,
-            veces_vomito: '',
-            aspecto_vomito: '',
-            defeca: undefined,
-            veces_defeca: '',
-            aspecto_defeca: '',
-          },
-          cavidad_oral: {
-            na: true,
-            sarro: '',
-            gingivitis: '',
-            sangrado: undefined,
-            halitosis: undefined,
-            hipersalivacion: undefined,
-          },
-          nariz_faringe: {
-            na: true,
-            descarga_nasal: undefined,
-            aspecto_descarga: '',
-            epistaxis: undefined,
-            resequedad: '',
-          },
-          sistema_respiratorio: {
-            na: true,
-            tos: undefined,
-            frecuencia_tos: '',
-            disnea: undefined,
-            frecuencia_disnea: '',
-            estornudos: undefined,
-            frecuencia_estornudos: '',
-          },
-          sistema_urogenital: {
-            na: true,
-            orina: undefined,
-            frecuencia_orina: '',
-            aspecto_orina: '',
-            castrado: undefined,
-            se_ha_cruzado: undefined,
-            ha_gestado: undefined,
-            ultimo_parto: '',
-            descarga_vulva_prepucio: '',
-          },
-          sistema_tegumentario: {
-            na: true,
-            alopecia: undefined,
-            parasitos: undefined,
-            tipo_parasitos: '',
-            lesiones: undefined,
-            tipo_lesion: '',
-            aspecto_lesion: '',
-          },
-          sistema_muscoesqueletico: {
-            na: true,
-            movimiento: '',
-            desde_cuando: '',
-            miembro_afectado: '',
-          },
-          sistema_nervioso: {
-            na: true,
-            incordinacion: undefined,
-            golpes_cabeza: undefined,
-            dismetria: '',
-            propiocepcion: '',
-          },
-          sistema_cardiaco: {
-            na: true,
-            disnea: undefined,
-            cianosis: undefined,
-            fatiga: undefined,
-            frecuencia_fatiga: '',
-            tos_nocturna: undefined,
-            frecuencia_tos_nocturna: '',
-          },
-          oidos: {
-            na: true,
-            izq_der: '',
-            descarga: '',
-            parasitos: undefined,
-            tipo_parasitos: '',
-            mal_olor: undefined,
-            se_rasca: undefined,
-            escucha: undefined,
-          },
-          ojos: {
-            na: true,
-            izq_der: '',
-            descarga: '',
-            schirmer: '',
-            fluorescencia: '',
-            observaciones: '',
-          },
+          sistema_digestivo: { na: true },
+          cavidad_oral: { na: true },
+          nariz_faringe: { na: true },
+          sistema_respiratorio: { na: true },
+          sistema_urogenital: { na: true },
+          sistema_tegumentario: { na: true },
+          sistema_muscoesqueletico: { na: true },
+          sistema_nervioso: { na: true },
+          sistema_cardiaco: { na: true },
+          oidos: { na: true },
+          ojos: { na: true },
         },
   
         diagnostico: {
@@ -459,8 +374,19 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
     // 🧭 Caso: editar una consulta existente
     if (consulta?.id && !citaData) {
       consultaCargadaRef.current = true;
-      console.log("🩺 Editando consulta:", consulta);
       setTabsEnabled(true);
+      console.log("Antes de reset()", consulta.evaluacion_clinica);
+      form.reset({
+        ...consulta,
+        evaluacion_clinica: {
+          ...consulta.evaluacion_clinica,
+          estado_general: {
+            ...consulta.evaluacion_clinica.estado_general,
+            tipo_desparasitacion: consulta.evaluacion_clinica.estado_general.tipo_desparasitacion || [],
+          },
+        },
+      });
+      console.log("Después de reset()", form.getValues("evaluacion_clinica"));
   
       axios
         .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/mascotas/${consulta.mascota_id}`, { withCredentials: true })
@@ -491,7 +417,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           form.setValue("fecha", consulta.fecha?.split("T")[0] ?? new Date().toISOString().split("T")[0]);
           form.setValue("motivo", consulta.motivo || "");
           if (consulta.evaluacion_clinica) {
-            form.setValue("evaluacion_clinica", consulta.evaluacion_clinica);
+            form.setValue("evaluacion_clinica", consulta.evaluacion_clinica); // TODO: ANALISAS?
           }
         })
         .catch((err) => console.error("❌ Error cargando datos:", err));
@@ -512,6 +438,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
       setMascotaSeleccionada(mascota.id);
       setTabsEnabled(true);
     }
+
   }, [consulta, citaData, form]);
   
   useEffect(() => {
@@ -569,6 +496,14 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [clientesOpen, clientesSearch]);
+
+  const otrasMascotasCheck = form.watch(
+    "evaluacion_clinica.datos_generales.otras_mascotas_check"
+  );
+
+  useEffect(() => {
+      form.setValue("evaluacion_clinica.datos_generales.otras_mascotas", "");
+  }, [otrasMascotasCheck, form]);
 
   const handleClienteSeleccionado = (clienteId: string) => {
     console.log('Cliente seleccionado:', clienteId);
@@ -655,7 +590,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         estado_general: {
           vacunas:              data.evaluacion_clinica.estado_general.vacunas,
           desparasitacion:      data.evaluacion_clinica.estado_general.desparasitacion,
-          tipo_desparasitacion: data.evaluacion_clinica.estado_general.tipo_desparacitacion,
+          tipo_desparasitacion: data.evaluacion_clinica.estado_general.tipo_desparasitacion,
           actitud:              data.evaluacion_clinica.estado_general.actitud,
           temperatura:          data.evaluacion_clinica.estado_general.temperatura,
           fc:                   data.evaluacion_clinica.estado_general.fc,
@@ -786,7 +721,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           notas:        data.evaluacion_clinica.indicaciones.notas,
         },
       };
-  
+      
       // Payload principal (solo los campos reales de la tabla)
       const payload = {
         cliente_id: clienteSeleccionado, // viene del estado
@@ -798,6 +733,11 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   
       // Crear o actualizar según corresponda
       if (consulta?.id) {
+        console.log(
+          "🐶 Front-end ENVIANDO (stringified):\n",
+          JSON.stringify(evaluacion_clinica, null, 2)
+        );
+
         await axios.patch(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/consultas/${consulta.id}`,
           payload,
@@ -1183,10 +1123,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormItem>
                     <FormLabel>Vacunas</FormLabel>
                     <Select
-                      onValueChange={(value) => {
-                        field.onChange(value === 'si')
-                      }}
-                      defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                      onValueChange={(value) => field.onChange(value === "si")}
+                      value={field.value === true ? "si" : field.value === false ? "no" : ""}
                       disabled={!tabsEnabled}
                     >
                       <FormControl>
@@ -1211,10 +1149,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormItem>
                     <FormLabel>Desparasitación</FormLabel>
                     <Select
-                      onValueChange={(value) =>{
-                        field.onChange(value === 'si')
-                      }}
-                      defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                      onValueChange={(value) => field.onChange(value === "si")}
+                      value={field.value === true ? "si" : field.value === false ? "no" : ""}
                       disabled={!tabsEnabled}
                     >
                       <FormControl>
@@ -1234,7 +1170,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
 
               <FormField
                 control={form.control}
-                name="evaluacion_clinica.estado_general.tipo_desparacitacion"
+                name="evaluacion_clinica.estado_general.tipo_desparasitacion"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de desparasitación</FormLabel>
@@ -1276,6 +1212,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="evaluacion_clinica.estado_general.actitud"
