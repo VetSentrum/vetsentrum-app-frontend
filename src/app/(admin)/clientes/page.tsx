@@ -97,7 +97,7 @@ export default function ClientesPage() {
         if (cliente) abrirModal(cliente);
       }
     }
-  }, [searchParams, clientes, loading]);
+  }, [searchParams, clientes, loading, initialLoading]);
 
   useEffect(() => {
     setPagina(1);

@@ -230,9 +230,14 @@ export interface Indicaciones {
   notas: string;
 }
 
+interface CitaData {
+  mascota: { id: string; cliente_id: string; nombre: string };
+  motivo: string;
+}
+
 interface Props {
   consulta: ConsultaFormData | null;
-  citaData?: any;
+  citaData?: CitaData | null;
   onClose: () => void;
   onSuccess: (mensaje: string) => void;
 }
