@@ -759,8 +759,9 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
       }
   
       onClose();
-    } catch (e: any) {
-      setError(e.response?.data?.message || "Error al guardar consulta");
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || "Error al guardar consulta");
     } finally {
       setGuardando(false);
     }

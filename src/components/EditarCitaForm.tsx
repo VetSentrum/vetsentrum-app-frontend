@@ -87,8 +87,6 @@ export function EditarCitaForm({ cita, onClose, onSuccess }: Props) {
   }
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout
-
     if (!clientesOpen) return
 
     if (clientesSearch.trim().length < 3) {
@@ -98,7 +96,7 @@ export function EditarCitaForm({ cita, onClose, onSuccess }: Props) {
 
     setClientesLoading(true)
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       buscarClientes(clientesSearch)
     }, 400)
 
