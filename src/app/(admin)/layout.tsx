@@ -6,6 +6,7 @@ import { ReactNode } from "react"
 import { cookies } from "next/headers"
 import { jwtDecode } from "jwt-decode"
 import LogoutButton from "@/components/LogoutButton"
+import Link from "next/link"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
@@ -64,7 +65,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
           {/* Visible para admin y veterinario */}
           {(user.rol === "admin" || user.rol === "veterinario") && (
-            <a href="/consultas" className="p-3 rounded-lg hover:bg-gray-800">Consultas</a>
+            <Link href="/consultas" className="p-3 rounded-lg hover:bg-gray-800">Consultas</Link>
           )}
         </nav>
       </aside>
