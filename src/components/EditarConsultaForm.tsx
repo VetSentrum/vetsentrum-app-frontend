@@ -46,7 +46,7 @@ export interface DatosGenerales {
   habitat: string;
   otras_mascotas_check: boolean;
   otras_mascotas: string;
-  desde_cuando_mascota: string;
+  desde_cuando_mascota: string;               
   dieta: string;
   historial_enfermedades: string;
 }
@@ -258,6 +258,15 @@ interface Mascota {
   edad_aproximada?: number;
   peso?: number;
   cliente_id: string;
+}
+
+type SistemaConNA = { na: boolean }
+
+function limpiarSistema<T extends SistemaConNA>(sistema: T): T | { na: true } {
+  if (sistema.na) {
+    return { na: true }
+  }
+  return sistema
 }
 
 export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: Props) {
@@ -615,104 +624,17 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           historia_clinica:     data.evaluacion_clinica.estado_general.historia_clinica,
         },
         sistemas: {
-          sistema_digestivo: {
-            na:             data.evaluacion_clinica.sistemas.sistema_digestivo.na,
-            apetito:        data.evaluacion_clinica.sistemas.sistema_digestivo.apetito,
-            estrenimiento:  data.evaluacion_clinica.sistemas.sistema_digestivo.estrenimiento,
-            flatulencia:    data.evaluacion_clinica.sistemas.sistema_digestivo.flatulencia,
-            ingesta_agua:   data.evaluacion_clinica.sistemas.sistema_digestivo.ingesta_agua,
-            vomito:         data.evaluacion_clinica.sistemas.sistema_digestivo.vomito,
-            veces_vomito:   data.evaluacion_clinica.sistemas.sistema_digestivo.veces_vomito,
-            aspecto_vomito: data.evaluacion_clinica.sistemas.sistema_digestivo.aspecto_vomito,
-            defeca:         data.evaluacion_clinica.sistemas.sistema_digestivo.defeca,
-            veces_defeca:   data.evaluacion_clinica.sistemas.sistema_digestivo.veces_defeca,
-            aspecto:        data.evaluacion_clinica.sistemas.sistema_digestivo.aspecto_defeca,
-          },
-          cavidad_oral: {
-            na:               data.evaluacion_clinica.sistemas.cavidad_oral.na,
-            sarro:            data.evaluacion_clinica.sistemas.cavidad_oral.sarro,
-            gingivitis:       data.evaluacion_clinica.sistemas.cavidad_oral.gingivitis,
-            sangrado:         data.evaluacion_clinica.sistemas.cavidad_oral.sangrado,
-            halitosis:        data.evaluacion_clinica.sistemas.cavidad_oral.halitosis,
-            hipersalivacion:  data.evaluacion_clinica.sistemas.cavidad_oral.hipersalivacion,
-          },
-          nariz_faringe: {
-            na:               data.evaluacion_clinica.sistemas.nariz_faringe.na,
-            descarga_nasal:   data.evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal,
-            aspecto_descarga: data.evaluacion_clinica.sistemas.nariz_faringe.aspecto_descarga,
-            epistaxis:        data.evaluacion_clinica.sistemas.nariz_faringe.epistaxis,
-            resequedad:       data.evaluacion_clinica.sistemas.nariz_faringe.resequedad,
-          },
-          sistema_respiratorio: {
-            na:                     data.evaluacion_clinica.sistemas.sistema_respiratorio.na,
-            tos:                    data.evaluacion_clinica.sistemas.sistema_respiratorio.tos,
-            frecuencia_tos:         data.evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_tos,
-            disnea:                 data.evaluacion_clinica.sistemas.sistema_respiratorio.disnea,
-            frecuencia_disnea:      data.evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_disnea,
-            estornudos:             data.evaluacion_clinica.sistemas.sistema_respiratorio.estornudos,
-            frecuencia_estornudos:  data.evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_estornudos,
-          },
-          sistema_urogenital: {
-            na:                       data.evaluacion_clinica.sistemas.sistema_urogenital.na,
-            orina:                    data.evaluacion_clinica.sistemas.sistema_urogenital.orina,
-            frecuencia_orina:         data.evaluacion_clinica.sistemas.sistema_urogenital.frecuencia_orina,
-            aspecto_orina:            data.evaluacion_clinica.sistemas.sistema_urogenital.aspecto_orina,
-            castrado:                 data.evaluacion_clinica.sistemas.sistema_urogenital.castrado,
-            se_ha_cruzado:            data.evaluacion_clinica.sistemas.sistema_urogenital.se_ha_cruzado,
-            ha_gestado:               data.evaluacion_clinica.sistemas.sistema_urogenital.ha_gestado,
-            ultimo_parto:             data.evaluacion_clinica.sistemas.sistema_urogenital.ultimo_parto,
-            descarga_vulva_prepucio:  data.evaluacion_clinica.sistemas.sistema_urogenital.descarga_vulva_prepucio,
-          },
-          sistema_tegumentario: {
-            na:             data.evaluacion_clinica.sistemas.sistema_tegumentario.na,
-            alopecia:       data.evaluacion_clinica.sistemas.sistema_tegumentario.alopecia,
-            parasitos:      data.evaluacion_clinica.sistemas.sistema_tegumentario.parasitos,
-            tipo_parasitos: data.evaluacion_clinica.sistemas.sistema_tegumentario.tipo_parasitos,
-            lesiones:       data.evaluacion_clinica.sistemas.sistema_tegumentario.lesiones,
-            tipo_lesion:    data.evaluacion_clinica.sistemas.sistema_tegumentario.tipo_lesion,
-            aspecto_lesion: data.evaluacion_clinica.sistemas.sistema_tegumentario.aspecto_lesion,
-          },
-          sistema_muscoesqueletico: {
-            na:               data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.na,
-            movimiento:       data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.movimiento,
-            desde_cuando:     data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.desde_cuando,
-            miembro_afectado: data.evaluacion_clinica.sistemas.sistema_muscoesqueletico.miembro_afectado,
-          },
-          sistema_nervioso: {
-            na:             data.evaluacion_clinica.sistemas.sistema_nervioso.na,
-            incordinacion:  data.evaluacion_clinica.sistemas.sistema_nervioso.incordinacion,
-            golpes_cabeza:  data.evaluacion_clinica.sistemas.sistema_nervioso.golpes_cabeza,
-            dismetria:      data.evaluacion_clinica.sistemas.sistema_nervioso.dismetria,
-            propiocepcion:  data.evaluacion_clinica.sistemas.sistema_nervioso.propiocepcion,
-          },
-          sistema_cardiaco: {
-            na:                       data.evaluacion_clinica.sistemas.sistema_cardiaco.na,
-            disnea:                   data.evaluacion_clinica.sistemas.sistema_cardiaco.disnea,
-            cianosis:                 data.evaluacion_clinica.sistemas.sistema_cardiaco.cianosis,
-            fatiga:                   data.evaluacion_clinica.sistemas.sistema_cardiaco.fatiga,
-            frecuencia_fatiga:        data.evaluacion_clinica.sistemas.sistema_cardiaco.frecuencia_fatiga,
-            tos_nocturna:             data.evaluacion_clinica.sistemas.sistema_cardiaco.tos_nocturna,
-            frecuencia_tos_nocturna:  data.evaluacion_clinica.sistemas.sistema_cardiaco.frecuencia_tos_nocturna,
-          },
-          oidos: {
-            na:             data.evaluacion_clinica.sistemas.oidos.na,
-            izq_der:        data.evaluacion_clinica.sistemas.oidos.izq_der,
-            descarga:       data.evaluacion_clinica.sistemas.oidos.descarga,
-            parasitos:      data.evaluacion_clinica.sistemas.oidos.parasitos,
-            tipo_parasitos: data.evaluacion_clinica.sistemas.oidos.tipo_parasitos,
-            mal_olor:       data.evaluacion_clinica.sistemas.oidos.mal_olor,
-            se_rasca:       data.evaluacion_clinica.sistemas.oidos.se_rasca,
-            escucha:        data.evaluacion_clinica.sistemas.oidos.escucha,
-          },
-          ojos: {
-            na:             data.evaluacion_clinica.sistemas.ojos.na,
-            izq_der:        data.evaluacion_clinica.sistemas.ojos.izq_der,
-            descarga:       data.evaluacion_clinica.sistemas.ojos.descarga,
-            schirmer:       data.evaluacion_clinica.sistemas.ojos.schirmer,
-            fluorescencia:  data.evaluacion_clinica.sistemas.ojos.fluorescencia,
-            observaciones:  data.evaluacion_clinica.sistemas.ojos.observaciones,
-          },
-
+          sistema_digestivo:        limpiarSistema(data.evaluacion_clinica.sistemas.sistema_digestivo),
+          cavidad_oral:             limpiarSistema(data.evaluacion_clinica.sistemas.cavidad_oral),
+          nariz_faringe:            limpiarSistema(data.evaluacion_clinica.sistemas.nariz_faringe),
+          sistema_respiratorio:     limpiarSistema(data.evaluacion_clinica.sistemas.sistema_respiratorio),
+          sistema_urogenital:       limpiarSistema(data.evaluacion_clinica.sistemas.sistema_urogenital),
+          sistema_tegumentario:     limpiarSistema(data.evaluacion_clinica.sistemas.sistema_tegumentario),
+          sistema_muscoesqueletico: limpiarSistema(data.evaluacion_clinica.sistemas.sistema_muscoesqueletico),
+          sistema_nervioso:         limpiarSistema(data.evaluacion_clinica.sistemas.sistema_nervioso),
+          sistema_cardiaco:         limpiarSistema(data.evaluacion_clinica.sistemas.sistema_cardiaco),
+          oidos:                    limpiarSistema(data.evaluacion_clinica.sistemas.oidos),
+          ojos:                     limpiarSistema(data.evaluacion_clinica.sistemas.ojos),
         },
         diagnostico: {
           dx_presuntivo:        data.evaluacion_clinica.diagnostico.dx_presuntivo,
@@ -1009,7 +931,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Hábitat</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione hábitat" />
@@ -1225,7 +1147,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Actitud</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione actitud" />
@@ -1317,7 +1239,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormItem>
                     <FormLabel>Reflejo Pupilar</FormLabel>
                     <Select
-                      onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                      onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1339,7 +1261,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Anisocoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1361,7 +1283,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nistagmo</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1383,7 +1305,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>RF</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1405,7 +1327,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>PE</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1427,7 +1349,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>POP</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="+/-" />
@@ -1545,6 +1467,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.apetito"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        if (!na && value == null) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                       <FormItem>
                           <FormLabel>Apetito</FormLabel>
@@ -1552,7 +1483,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                           onValueChange={(value) => {
                             field.onChange(value === 'si')
                           }}
-                          defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                          value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                           disabled={!tabsEnabled}
                           >
                           <FormControl>
@@ -1573,14 +1504,23 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.estrenimiento"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        if (!na && value == null) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                       <FormItem>
                           <FormLabel>Estreñimiento</FormLabel>
                           <Select
                             onValueChange={(value) => {
-                              field.onChange(value === 'sí')
+                              field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                           <FormControl>
@@ -1601,6 +1541,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.flatulencia"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        if (!na && value == null) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                       <FormItem>
                           <FormLabel>Flatulencia</FormLabel>
@@ -1608,7 +1557,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                           <FormControl>
@@ -1629,10 +1578,19 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_digestivo.ingesta_agua"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                       <FormItem>
                           <FormLabel>Ingesta de agua</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!tabsEnabled}>
+                          <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
                           <FormControl>
                               <SelectTrigger>
                               <SelectValue placeholder="Seleccione" />
@@ -1654,6 +1612,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.vomito"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        if (!na && value == null) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Vómito</FormLabel>
@@ -1661,7 +1628,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         onValueChange={(value) => {
                           field.onChange(value === 'si')
                         }}
-                        defaultValue={field.value === true ? 'Sí' : field.value == false ? 'No' : ''}
+                        value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                         disabled={!tabsEnabled}
                       >
                         <FormControl>
@@ -1681,6 +1648,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.veces_vomito"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        const vomito = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.vomito") === true
+                        if (!na && !value && vomito) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Veces por día</FormLabel>
@@ -1693,6 +1670,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.aspecto_vomito"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        const vomito = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.vomito") === true
+                        if (!na && !value && vomito) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Aspecto</FormLabel>
@@ -1707,6 +1694,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.defeca"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        if (!na && value == null) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Defeca</FormLabel>
@@ -1714,7 +1710,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         onValueChange={(value) => {
                           field.onChange(value === 'si')
                         }}
-                        defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                        value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                         disabled={!tabsEnabled}
                       >
                         <FormControl>
@@ -1734,6 +1730,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.veces_defeca"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        const defeca = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.defeca") === true
+                        if (!na && !value && defeca) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Veces por día</FormLabel>
@@ -1746,6 +1752,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   <FormField
                     control={form.control}
                     name="evaluacion_clinica.sistemas.sistema_digestivo.aspecto_defeca"
+                    rules={{
+                      validate: (value) => {
+                        const na = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.na")
+                        const defeca = form.getValues("evaluacion_clinica.sistemas.sistema_digestivo.defeca") === true
+                        if (!na && !value && defeca) {
+                          return "Campo obligatorio"
+                        }
+                        return true
+                      }
+                    }}
                     render={({ field }) => (
                     <FormItem>
                       <FormLabel>Aspecto</FormLabel>
@@ -1793,6 +1809,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.cavidad_oral.sarro"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.cavidad_oral.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sarro</FormLabel>
@@ -1805,6 +1830,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.cavidad_oral.gingivitis"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.cavidad_oral.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Gingivitis</FormLabel>
@@ -1817,6 +1851,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.cavidad_oral.sangrado"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.cavidad_oral.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sangrado</FormLabel>
@@ -1824,7 +1867,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -1845,6 +1888,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.cavidad_oral.halitosis"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.cavidad_oral.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Halitosis</FormLabel>
@@ -1852,7 +1904,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -1873,6 +1925,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.cavidad_oral.hipersalivacion"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.cavidad_oral.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hipersalivación</FormLabel>
@@ -1880,7 +1941,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -1936,6 +1997,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Descarga nasal</FormLabel>
@@ -1943,7 +2013,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}>
                             <FormControl>
                               <SelectTrigger>
@@ -1965,6 +2035,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         <FormField
                           control={form.control}
                           name="evaluacion_clinica.sistemas.nariz_faringe.aspecto_descarga"
+                          rules={{
+                            validate: (value) => {
+                              const na = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.na")
+                              const descarga_nasal = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal") === true
+                              if (!na && !value && descarga_nasal) {
+                                return "Campo obligatorio"
+                              }
+                              return true
+                            }
+                          }}
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Aspecto</FormLabel>
@@ -1983,6 +2063,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.nariz_faringe.epistaxis"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Epistaxis</FormLabel>
@@ -1990,7 +2079,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}>
                             <FormControl>
                               <SelectTrigger>
@@ -2010,6 +2099,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.nariz_faringe.resequedad"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Resequedad</FormLabel>
@@ -2057,6 +2155,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_respiratorio.tos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tos</FormLabel>
@@ -2064,7 +2171,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2085,6 +2192,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_tos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.na")
+                          const tos = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.tos") == true
+                          if (!na && !value && tos) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Frecuencia</FormLabel>
@@ -2097,6 +2214,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_respiratorio.disnea"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Disnea</FormLabel>
@@ -2104,7 +2230,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2124,6 +2250,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_disnea"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.na")
+                          const disnea = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.disnea") === true
+                          if (!na && !value && disnea) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Frecuencia</FormLabel>
@@ -2136,6 +2272,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_respiratorio.estornudos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estornudos</FormLabel>
@@ -2143,7 +2288,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2164,6 +2309,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_respiratorio.frecuencia_estornudos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.na")
+                          const estornudos = form.getValues("evaluacion_clinica.sistemas.sistema_respiratorio.estornudos") === true
+                          if (!na && !value && estornudos) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Frecuencia</FormLabel>
@@ -2211,6 +2366,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.orina"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Orina</FormLabel>
@@ -2218,7 +2382,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => { 
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2238,6 +2402,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.frecuencia_orina"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          const orina = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.orina") === true
+                          if (!na && !value && orina) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Frecuencia</FormLabel>
@@ -2249,6 +2423,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.aspecto_orina"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          const orina = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.orina") === true
+                          if (!na && !value && orina) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Aspecto</FormLabel>
@@ -2261,6 +2445,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.castrado"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Castrado</FormLabel>
@@ -2268,7 +2461,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2289,6 +2482,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.se_ha_cruzado"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Se ha cruzado</FormLabel>
@@ -2296,7 +2498,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2317,6 +2519,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.ha_gestado"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Ha estado gestado</FormLabel>
@@ -2324,7 +2535,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2344,6 +2555,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.ultimo_parto"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          const ha_gestado = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.ha_gestado") === true
+                          if (!na && !value && ha_gestado) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Último parto</FormLabel>
@@ -2355,6 +2576,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.descarga_vulva_prepucio"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Descarga vulva/prepucio</FormLabel>
@@ -2402,6 +2632,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_tegumentario.alopecia"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Alopecia</FormLabel>
@@ -2409,7 +2648,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2430,6 +2669,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_tegumentario.parasitos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Parasitos</FormLabel>
@@ -2437,7 +2685,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2457,10 +2705,20 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_tegumentario.tipo_parasitos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.na")
+                          const parasitos = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.parasitos") === true
+                          if (!na && !value && parasitos) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo</FormLabel>
-                          <Select onValueChange={field.onChange} disabled={form.watch('evaluacion_clinica.sistemas.sistema_tegumentario.parasitos') !== true || !tabsEnabled} >
+                          <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={form.watch('evaluacion_clinica.sistemas.sistema_tegumentario.parasitos') !== true || !tabsEnabled} >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccione" />
@@ -2480,6 +2738,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_tegumentario.lesiones"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Lesiones</FormLabel>
@@ -2487,7 +2754,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2507,6 +2774,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_tegumentario.tipo_lesion"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.na")
+                          const lesiones = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.lesiones") === true
+                          if (!na && !value && lesiones) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de lesión</FormLabel>
@@ -2518,6 +2795,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_tegumentario.aspecto_lesion"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.na")
+                          const lesiones = form.getValues("evaluacion_clinica.sistemas.sistema_tegumentario.lesiones") === true
+                          if (!na && !value && lesiones) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Aspecto</FormLabel>
@@ -2566,6 +2853,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_muscoesqueletico.movimiento"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_muscoesqueletico.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Movimiento</FormLabel>
@@ -2577,6 +2873,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_muscoesqueletico.desde_cuando"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_muscoesqueletico.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Desde cuando</FormLabel>
@@ -2588,6 +2893,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_muscoesqueletico.miembro_afectado"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_muscoesqueletico.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Miembro afectado</FormLabel>
@@ -2639,6 +2953,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_nervioso.incordinacion"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_nervioso.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Incordinación</FormLabel>
@@ -2646,7 +2969,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2667,6 +2990,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_nervioso.golpes_cabeza"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_nervioso.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Golpes en cabeza</FormLabel>
@@ -2674,7 +3006,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2695,6 +3027,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_nervioso.dismetria"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_nervioso.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Dismetria</FormLabel>
@@ -2707,6 +3048,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_nervioso.propiocepcion"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_nervioso.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Propiocepción</FormLabel>
@@ -2755,6 +3105,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_cardiaco.disnea"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Disnea</FormLabel>
@@ -2762,7 +3121,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2783,6 +3142,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_cardiaco.cianosis"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Cianosis</FormLabel>
@@ -2790,7 +3158,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2811,6 +3179,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_cardiaco.fatiga"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Fatiga</FormLabel>
@@ -2818,7 +3195,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2839,6 +3216,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_cardiaco.frecuencia_fatiga"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.na")
+                          const fatiga = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.fatiga") === true
+                          if (!na && !value && fatiga) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Frecuencia</FormLabel>
@@ -2851,6 +3238,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_cardiaco.tos_nocturna"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tos nocturna</FormLabel>
@@ -2858,7 +3254,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2879,6 +3275,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_cardiaco.frecuencia_tos_nocturna"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.na")
+                          const tos_nocturna = form.getValues("evaluacion_clinica.sistemas.sistema_cardiaco.tos_nocturna") === true
+                          if (!na && !value && tos_nocturna) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Frecuencia</FormLabel>
@@ -2927,6 +3333,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.oidos.descarga"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.oidos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Descarga</FormLabel>
@@ -2939,6 +3354,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.oidos.parasitos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.oidos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Parásitos</FormLabel>
@@ -2946,7 +3370,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -2966,6 +3390,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.oidos.tipo_parasitos"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.oidos.na")
+                          const parasitos = form.getValues("evaluacion_clinica.sistemas.oidos.parasitos") === true
+                          if (!na && !value && parasitos) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Cuál</FormLabel>
@@ -2978,6 +3412,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.oidos.mal_olor"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.oidos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Mal olor</FormLabel>
@@ -2985,7 +3428,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -3006,6 +3449,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.oidos.se_rasca"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.oidos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Se rasca</FormLabel>
@@ -3013,7 +3465,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -3034,6 +3486,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.oidos.escucha"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.oidos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Escucha</FormLabel>
@@ -3041,7 +3502,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             onValueChange={(value) => {
                               field.onChange(value === 'si')
                             }}
-                            defaultValue={field.value === true ? 'Sí' : field.value === false ? 'No' : ''}
+                            value={field.value === true ? 'si' : field.value === false ? 'no' : ''}
                             disabled={!tabsEnabled}
                           >
                             <FormControl>
@@ -3098,6 +3559,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.ojos.descarga"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.ojos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Descarga</FormLabel>
@@ -3110,6 +3580,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.ojos.schirmer"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.ojos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Schirmer</FormLabel>
@@ -3122,6 +3601,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.ojos.fluorescencia"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.ojos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Fluorescencia</FormLabel>
@@ -3134,6 +3622,15 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                     <FormField
                       control={form.control}
                       name="evaluacion_clinica.sistemas.ojos.observaciones"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.ojos.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Observaciones</FormLabel>
