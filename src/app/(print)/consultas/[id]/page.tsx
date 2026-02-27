@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/button'
 import { ConsultaFormData } from '@/components/EditarConsultaForm'
 
 type ConsultaConRelaciones = ConsultaFormData & {
-  mascota?: { nombre: string; cliente?: { nombre_completo: string } }
+  mascota?: {
+    nombre: string
+    raza?: string
+    sexo?: string
+    edad_aproximada?: number
+    especie?: { nombre: string }
+    cliente?: { nombre_completo: string }
+  }
   veterinario?: { nombre: string }
 }
 
@@ -57,15 +64,20 @@ export default function ConsultaImprimirPage() {
   const dx = ec?.diagnostico
   const ind = ec?.indicaciones
 
+  // Fallback a los datos de la relación mascota para campos que vienen de la BD
+  const especie = dg?.especie || consulta.mascota?.especie?.nombre
+  const raza = dg?.raza || consulta.mascota?.raza
+  const sexo = dg?.sexo || consulta.mascota?.sexo
+  const edad = dg?.edad || consulta.mascota?.edad_aproximada?.toString()
+
   return (
-    <div className="max-w-3xl mx-auto p-6 print:p-4">
+    <div className="max-w-3xl mx-auto p-6">
       <div className="flex justify-between items-start mb-6 print:hidden">
         <h1 className="text-2xl font-bold">Consulta Clínica</h1>
         <Button onClick={() => window.print()}>Imprimir</Button>
       </div>
       <h1 className="text-2xl font-bold mb-4 hidden print:block">Consulta Clínica</h1>
 
-      {/* Encabezado */}
       <Seccion titulo="Datos de la Consulta">
         <Campo label="Fecha" value={consulta.fecha ? new Date(consulta.fecha).toLocaleDateString('es-MX', { timeZone: 'UTC' }) : ''} />
         <Campo label="Mascota" value={consulta.mascota?.nombre} />
@@ -74,13 +86,12 @@ export default function ConsultaImprimirPage() {
         <Campo label="Motivo" value={consulta.motivo} />
       </Seccion>
 
-      {/* Datos Generales */}
       {dg && (
         <Seccion titulo="Datos Generales">
-          <Campo label="Especie" value={dg.especie} />
-          <Campo label="Raza" value={dg.raza} />
-          <Campo label="Sexo" value={dg.sexo} />
-          <Campo label="Edad" value={dg.edad} />
+          <Campo label="Especie" value={especie} />
+          <Campo label="Raza" value={raza} />
+          <Campo label="Sexo" value={sexo} />
+          <Campo label="Edad" value={edad} />
           <Campo label="Peso" value={dg.peso} />
           <Campo label="Hábitat" value={dg.habitat} />
           <Campo label="Otras mascotas" value={dg.otras_mascotas_check ? dg.otras_mascotas : 'No'} />
@@ -90,7 +101,6 @@ export default function ConsultaImprimirPage() {
         </Seccion>
       )}
 
-      {/* Estado General */}
       {eg && (
         <Seccion titulo="Estado General">
           <Campo label="Vacunas" value={eg.vacunas} />
@@ -118,7 +128,6 @@ export default function ConsultaImprimirPage() {
         </Seccion>
       )}
 
-      {/* Sistemas */}
       {sis && (
         <>
           {!sis.sistema_digestivo?.na && (
@@ -240,7 +249,6 @@ export default function ConsultaImprimirPage() {
         </>
       )}
 
-      {/* Diagnóstico */}
       {dx && (
         <Seccion titulo="Diagnóstico">
           <Campo label="Dx Presuntivo" value={dx.dx_presuntivo} />
@@ -270,7 +278,6 @@ export default function ConsultaImprimirPage() {
         </Seccion>
       )}
 
-      {/* Indicaciones */}
       {ind && (
         <Seccion titulo="Indicaciones">
           <Campo label="Indicaciones" value={ind.indicaciones} />
