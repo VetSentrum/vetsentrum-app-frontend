@@ -53,12 +53,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <a href="/clientes" className="p-3 rounded-lg hover:bg-gray-800">Clientes</a>
           )}
 
-          {/* Visible para admin y recepcion veterinario */}
+          {/* Visible para admin, recepcion y veterinario */}
           {(user.rol === "admin" || user.rol === "recepcion" || user.rol === "veterinario") && (
             <a href="/mascotas" className="p-3 rounded-lg hover:bg-gray-800">Mascotas</a>
           )}
 
-          {/* Visible para admin y recepcion veterinario */}
+          {/* Visible para admin, recepcion y veterinario */}
           {(user.rol === "admin" || user.rol === "recepcion" || user.rol === "veterinario") && (
             <a href="/citas" className="p-3 rounded-lg hover:bg-gray-800">Citas</a>
           )}
