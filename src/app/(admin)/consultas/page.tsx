@@ -187,13 +187,10 @@ export default function ConsultasPage() {
             {consultasPaginadas.map(consulta => (
               <tr key={consulta.id} className="border-t">
                 <td className="p-2 text-center">
-                  {consulta.fecha ? new Date(consulta.fecha).toLocaleString('es-MX', {
+                  {consulta.fecha ? new Date(consulta.fecha).toLocaleDateString('es-MX', {
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true,
                     timeZone: 'UTC',
                   }) : ''}
                 </td>

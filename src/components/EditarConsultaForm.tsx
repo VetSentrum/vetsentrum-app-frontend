@@ -258,9 +258,19 @@ interface Mascota {
   edad_aproximada?: number;
   peso?: number;
   cliente_id: string;
+  expediente?: number;
 }
 
 type SistemaConNA = { na: boolean }
+
+function formatEdad(meses: number): string {
+  if (meses == null || isNaN(meses)) return '';
+  const anios = Math.floor(meses / 12);
+  const mesesRestantes = meses % 12;
+  if (anios === 0) return `${mesesRestantes} ${mesesRestantes === 1 ? 'mes' : 'meses'}`;
+  if (mesesRestantes === 0) return `${anios} ${anios === 1 ? 'año' : 'años'}`;
+  return `${anios} ${anios === 1 ? 'año' : 'años'} y ${mesesRestantes} ${mesesRestantes === 1 ? 'mes' : 'meses'}`;
+}
 
 function limpiarSistema<T extends SistemaConNA>(sistema: T): T | { na: true } {
   if (sistema.na) {
@@ -274,7 +284,12 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   const [error, setError] = useState<string | null>(null);
   const [tabsEnabled, setTabsEnabled] = useState(false);
   const consultaCargadaRef = useRef(false);
-  
+
+  const tabOrder = ['datos-generales', 'estado-general', 'sistemas', 'diagnostico', 'indicaciones'];
+  const [tabActivo, setTabActivo] = useState('datos-generales');
+  const [tabsDesbloqueadas, setTabsDesbloqueadas] = useState<string[]>(['datos-generales']);
+  const [expediente, setExpediente] = useState<number | null>(null);
+
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
@@ -389,6 +404,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
     if (consulta?.id && !citaData) {
       consultaCargadaRef.current = true;
       setTabsEnabled(true);
+      setTabsDesbloqueadas([...tabOrder]);
       console.log("Antes de reset()", consulta.evaluacion_clinica);
       form.reset({
         ...consulta,
@@ -410,6 +426,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           // 🐾 Asignar datos de cliente y mascota
           setClienteSeleccionado(mascota.cliente_id);
           setMascotaSeleccionada(mascota.id);
+          setExpediente(mascota.expediente ?? null);
   
           // 🐕 Cargar mascotas del cliente
           const mascotasRes = await axios.get(
@@ -451,6 +468,10 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
       setClienteSeleccionado(mascota.cliente_id);
       setMascotaSeleccionada(mascota.id);
       setTabsEnabled(true);
+      setTabsDesbloqueadas([...tabOrder]);
+      axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/mascotas/${mascota.id}`, { withCredentials: true })
+        .then(res => setExpediente(res.data.expediente ?? null))
+        .catch(console.error);
     }
 
   }, [consulta, citaData, form]);
@@ -468,9 +489,10 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           form.setValue('evaluacion_clinica.datos_generales.raza', mascota.raza);
           form.setValue('evaluacion_clinica.datos_generales.especie', mascota.especie['nombre']);
           form.setValue('evaluacion_clinica.datos_generales.sexo', mascota.sexo);
-          form.setValue('evaluacion_clinica.datos_generales.edad', mascota.edad_aproximada);
+          form.setValue('evaluacion_clinica.datos_generales.edad', formatEdad(mascota.edad_aproximada));
 
           setClienteSeleccionado(mascota.cliente_id);
+          setExpediente(mascota.expediente ?? null);
           setTabsEnabled(true);
         })
         .catch(console.error);
@@ -529,6 +551,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
     setMascotaSeleccionada('');
     form.setValue('mascota_id', '');
     setTabsEnabled(false);
+    setExpediente(null);
+    setTabsDesbloqueadas(['datos-generales']);
   
     // Cargar mascotas del cliente seleccionado
     axios
@@ -688,24 +712,44 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
       setGuardando(false);
     }
   };
-  
+
+  const handleSiguiente = async (tabActual: string) => {
+    let isValid = true;
+
+    if (tabActual === 'sistemas') {
+      await form.trigger();
+      isValid = !form.formState.errors?.evaluacion_clinica?.sistemas;
+    }
+
+    if (!isValid) return;
+
+    const indexActual = tabOrder.indexOf(tabActual);
+    const siguienteTab = tabOrder[indexActual + 1];
+    if (!siguienteTab) return;
+
+    setTabsDesbloqueadas(prev =>
+      prev.includes(siguienteTab) ? prev : [...prev, siguienteTab]
+    );
+    setTabActivo(siguienteTab);
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <Tabs defaultValue="datos-generales">
+        <Tabs value={tabActivo} onValueChange={setTabActivo}>
           <TabsList className="grid grid-cols-5 mb-4">
             <TabsTrigger value="datos-generales">Datos Generales</TabsTrigger>
-            <TabsTrigger value="estado-general" disabled={!tabsEnabled}>Estado General</TabsTrigger>
-            <TabsTrigger value="sistemas" disabled={!tabsEnabled}>Sistemas</TabsTrigger>
-            <TabsTrigger value="diagnostico" disabled={!tabsEnabled}>Diagnóstico</TabsTrigger>
-            <TabsTrigger value="indicaciones" disabled={!tabsEnabled}>Indicaciones</TabsTrigger>
+            <TabsTrigger value="estado-general" disabled={!tabsEnabled || !tabsDesbloqueadas.includes('estado-general')}>Estado General</TabsTrigger>
+            <TabsTrigger value="sistemas" disabled={!tabsEnabled || !tabsDesbloqueadas.includes('sistemas')}>Sistemas</TabsTrigger>
+            <TabsTrigger value="diagnostico" disabled={!tabsEnabled || !tabsDesbloqueadas.includes('diagnostico')}>Diagnóstico</TabsTrigger>
+            <TabsTrigger value="indicaciones" disabled={!tabsEnabled || !tabsDesbloqueadas.includes('indicaciones')}>Indicaciones</TabsTrigger>
           </TabsList>
 
           {/* Datos Generales */}
           <TabsContent value="datos-generales" className="space-y-4">
             {/* Selects de Cliente y Mascota - solo mostrar si no viene de cita */}
             {!citaData && (
-              <div className="grid grid-cols-3 gap-4 mb-4 p-4 border rounded-md bg-gray-50">
+              <div className="grid grid-cols-4 gap-4 mb-4 p-4 border rounded-md bg-gray-50">
                 <div>
                   <Label>Cliente</Label>
                   
@@ -817,7 +861,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         </SelectItem>
                       ))}
                     </SelectContent>
-                  </Select> 
+                  </Select>
+                </div>
+
+                <div className="flex flex-col justify-center">
+                  <span className="text-sm font-semibold">
+                    {expediente != null ? `#EXP-${expediente}` : '#EXP-'}
+                  </span>
                 </div>
 
                 <div>
@@ -1038,6 +1088,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="button" disabled={!tabsEnabled} onClick={() => handleSiguiente('datos-generales')}>
+                Siguiente
+              </Button>
             </div>
           </TabsContent>
 
@@ -1374,7 +1431,19 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>TLLC</FormLabel>
-                    <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="1 seg">1 seg</SelectItem>
+                        <SelectItem value="2 seg">2 seg</SelectItem>
+                        <SelectItem value="3 seg">3 seg</SelectItem>
+                        <SelectItem value="más de 3 seg">más de 3 seg</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1386,7 +1455,20 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Deshidratación</FormLabel>
-                    <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="0%">0%</SelectItem>
+                        <SelectItem value="5%">5%</SelectItem>
+                        <SelectItem value="10%">10%</SelectItem>
+                        <SelectItem value="15%">15%</SelectItem>
+                        <SelectItem value="Más de 20%">Más de 20%</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1398,7 +1480,20 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Condición Corporal</FormLabel>
-                    <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="1. Caquexia">1. Caquexia</SelectItem>
+                        <SelectItem value="2. Bajo de peso">2. Bajo de peso</SelectItem>
+                        <SelectItem value="3. Normal">3. Normal</SelectItem>
+                        <SelectItem value="4. Sobrepeso">4. Sobrepeso</SelectItem>
+                        <SelectItem value="5. Obeso">5. Obeso</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1429,6 +1524,12 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
               )}
             />
 
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="button" disabled={!tabsEnabled} onClick={() => handleSiguiente('estado-general')}>
+                Siguiente
+              </Button>
+            </div>
           </TabsContent>
 
           {/* Sistemas */}
@@ -1821,7 +1922,19 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sarro</FormLabel>
-                          <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
+                          <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="1/4">1/4</SelectItem>
+                              <SelectItem value="2/4">2/4</SelectItem>
+                              <SelectItem value="3/4">3/4</SelectItem>
+                              <SelectItem value="4/4">4/4</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1842,7 +1955,19 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Gingivitis</FormLabel>
-                          <FormControl><Input {...field} disabled={!tabsEnabled} /></FormControl>
+                          <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={!tabsEnabled}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="1/4">1/4</SelectItem>
+                              <SelectItem value="2/4">2/4</SelectItem>
+                              <SelectItem value="3/4">3/4</SelectItem>
+                              <SelectItem value="4/4">4/4</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -2030,35 +2155,27 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                       )}
                     />
 
-                    {form.watch('evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal') === true && (
-                      <>
-                        <FormField
-                          control={form.control}
-                          name="evaluacion_clinica.sistemas.nariz_faringe.aspecto_descarga"
-                          rules={{
-                            validate: (value) => {
-                              const na = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.na")
-                              const descarga_nasal = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal") === true
-                              if (!na && !value && descarga_nasal) {
-                                return "Campo obligatorio"
-                              }
-                              return true
-                            }
-                          }}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Aspecto</FormLabel>
-                              <FormControl><Input { ...field } disabled={!tabsEnabled} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </>
-                    )}
-
-                    {form.watch('evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal') !== true && (
-                      <></>
-                    )}
+                    <FormField
+                      control={form.control}
+                      name="evaluacion_clinica.sistemas.nariz_faringe.aspecto_descarga"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.na")
+                          const descarga_nasal = form.getValues("evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal") === true
+                          if (!na && !value && descarga_nasal) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Aspecto</FormLabel>
+                          <FormControl><Input { ...field } disabled={form.watch('evaluacion_clinica.sistemas.nariz_faringe.descarga_nasal') !== true || !tabsEnabled} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     
                     <FormField
                       control={form.control}
@@ -3644,7 +3761,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 </>
               )}
             </div>
-            
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="button" disabled={!tabsEnabled} onClick={() => handleSiguiente('sistemas')}>
+                Siguiente
+              </Button>
+            </div>
           </TabsContent>
 
           {/* Diagnóstico */}
@@ -3943,6 +4066,13 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 </FormItem>
               )}
             />
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="button" disabled={!tabsEnabled} onClick={() => handleSiguiente('diagnostico')}>
+                Siguiente
+              </Button>
+            </div>
           </TabsContent>
 
           {/* Indicaciones */}
@@ -3983,17 +4113,16 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                 </FormItem>
               )}
             />
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="submit" disabled={guardando || !tabsEnabled}>
+                {guardando ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </div>
+            {error && <p className="text-red-600">{error}</p>}
           </TabsContent>
         </Tabs>
-
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" disabled={guardando || !tabsEnabled}>
-            {guardando ? 'Guardando...' : 'Guardar'}
-          </Button>
-        </div>
-
-        {error && <p className="text-red-600">{error}</p>}
       </form>
     </Form>
   );

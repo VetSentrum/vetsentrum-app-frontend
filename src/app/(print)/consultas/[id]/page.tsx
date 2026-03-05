@@ -13,6 +13,7 @@ type ConsultaConRelaciones = ConsultaFormData & {
     edad_aproximada?: number
     especie?: { nombre: string }
     cliente?: { nombre_completo: string }
+    expediente?: number
   }
   veterinario?: { nombre: string }
 }
@@ -80,7 +81,7 @@ export default function ConsultaImprimirPage() {
 
       <Seccion titulo="Datos de la Consulta">
         <Campo label="Fecha" value={consulta.fecha ? new Date(consulta.fecha).toLocaleDateString('es-MX', { timeZone: 'UTC' }) : ''} />
-        <Campo label="Mascota" value={consulta.mascota?.nombre} />
+        <Campo label="Mascota" value={`${consulta.mascota?.nombre ?? ''} (#EXP-${consulta.mascota?.expediente ?? ''})`} />
         <Campo label="Cliente" value={consulta.mascota?.cliente?.nombre_completo} />
         <Campo label="Veterinario" value={consulta.veterinario?.nombre} />
         <Campo label="Motivo" value={consulta.motivo} />
