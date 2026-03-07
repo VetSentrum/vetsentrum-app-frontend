@@ -48,6 +48,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <a href="/usuarios" className="p-3 rounded-lg hover:bg-gray-800">Usuarios</a>
           )}
 
+          {/* Solo visible si es admin */}
+          {user.rol === "admin" && (
+            <a href="/empresa" className="p-3 rounded-lg hover:bg-gray-800">Empresa</a>
+          )}
+
           {/* Visible para admin y recepcion */}
           {(user.rol === "admin" || user.rol === "recepcion" || user.rol === "veterinario") && (
             <a href="/clientes" className="p-3 rounded-lg hover:bg-gray-800">Clientes</a>

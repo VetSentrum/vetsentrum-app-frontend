@@ -146,6 +146,7 @@ export interface SistemaTegumentario {
   alopecia: boolean;
   parasitos: boolean;
   tipo_parasitos: string;
+  cual_parasito: string;
   lesiones: boolean;
   tipo_lesion: string;
   aspecto_lesion: string;
@@ -259,6 +260,7 @@ interface Mascota {
   peso?: number;
   cliente_id: string;
   expediente?: number;
+  fecha_creacion?: string;
 }
 
 type SistemaConNA = { na: boolean }
@@ -270,6 +272,16 @@ function formatEdad(meses: number): string {
   if (anios === 0) return `${mesesRestantes} ${mesesRestantes === 1 ? 'mes' : 'meses'}`;
   if (mesesRestantes === 0) return `${anios} ${anios === 1 ? 'año' : 'años'}`;
   return `${anios} ${anios === 1 ? 'año' : 'años'} y ${mesesRestantes} ${mesesRestantes === 1 ? 'mes' : 'meses'}`;
+}
+
+function calcularEdadActual(edadMeses: number, fechaCreacion?: string): string {
+  if (!fechaCreacion) return formatEdad(edadMeses ?? 0);
+  const inicio = new Date(fechaCreacion);
+  const hoy = new Date();
+  const mesesTranscurridos =
+    (hoy.getFullYear() - inicio.getFullYear()) * 12 +
+    (hoy.getMonth() - inicio.getMonth());
+  return formatEdad((edadMeses ?? 0) + Math.max(0, mesesTranscurridos));
 }
 
 function limpiarSistema<T extends SistemaConNA>(sistema: T): T | { na: true } {
@@ -489,7 +501,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           form.setValue('evaluacion_clinica.datos_generales.raza', mascota.raza);
           form.setValue('evaluacion_clinica.datos_generales.especie', mascota.especie['nombre']);
           form.setValue('evaluacion_clinica.datos_generales.sexo', mascota.sexo);
-          form.setValue('evaluacion_clinica.datos_generales.edad', formatEdad(mascota.edad_aproximada));
+          form.setValue('evaluacion_clinica.datos_generales.edad', calcularEdadActual(mascota.edad_aproximada ?? 0, mascota.fecha_creacion));
 
           setClienteSeleccionado(mascota.cliente_id);
           setExpediente(mascota.expediente ?? null);
@@ -2847,6 +2859,23 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                             <SelectItem value="otro">Otro</SelectItem>
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="evaluacion_clinica.sistemas.sistema_tegumentario.cual_parasito"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>¿Cuál?</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              disabled={form.watch('evaluacion_clinica.sistemas.sistema_tegumentario.tipo_parasitos') !== 'otro' || !tabsEnabled}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

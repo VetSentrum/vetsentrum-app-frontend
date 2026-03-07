@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { EditarConsultaForm, ConsultaFormData } from '@/components/EditarConsultaForm'
+import { EditarRecetaForm, RenglonReceta } from '@/components/EditarRecetaForm'
 import axios from 'axios'
 
 interface Consulta {
@@ -15,6 +16,7 @@ interface Consulta {
   veterinario_id: string
   motivo: string
   evaluacion_clinica?: Record<string, unknown>
+  receta?: { id: string } | null
   mascota?: {
     nombre: string
     cliente?: { nombre_completo: string }
@@ -38,6 +40,10 @@ export default function ConsultasPage() {
   const [sortField, setSortField] = useState<'fecha' | 'mascota_nombre' | 'cliente_nombre'>('fecha')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [modalRecetaAbierto, setModalRecetaAbierto] = useState(false)
+  const [recetaConsultaId, setRecetaConsultaId] = useState<string | null>(null)
+  const [recetaId, setRecetaId] = useState<string | undefined>(undefined)
+  const [recetaIndicaciones, setRecetaIndicaciones] = useState<RenglonReceta[]>([])
 
   const hoy = new Date()
   const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
@@ -75,6 +81,25 @@ export default function ConsultasPage() {
   const cerrarModal = () => {
     setModalAbierto(false)
     setConsultaSeleccionada(null)
+  }
+
+  const abrirModalReceta = async (consulta: Consulta) => {
+    setRecetaConsultaId(consulta.id)
+    setRecetaId(consulta.receta?.id)
+    if (consulta.receta?.id) {
+      try {
+        const { data } = await axios.get(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/recetas/${consulta.receta.id}`,
+          { withCredentials: true },
+        )
+        setRecetaIndicaciones(data.indicaciones ?? [])
+      } catch {
+        setRecetaIndicaciones([])
+      }
+    } else {
+      setRecetaIndicaciones([])
+    }
+    setModalRecetaAbierto(true)
   }
 
   const handleSort = (field: 'fecha' | 'mascota_nombre' | 'cliente_nombre') => {
@@ -198,7 +223,7 @@ export default function ConsultasPage() {
                 <td className="p-2 text-center">{consulta.mascota?.cliente?.nombre_completo ?? '—'}</td>
                 <td className="p-2 text-center">{consulta.motivo}</td>
                 <td className="p-2 text-center">{consulta.veterinario?.nombre ?? '—'}</td>
-                <td className="p-2 text-center flex gap-2 justify-center">
+                <td className="p-2 text-center flex gap-2 justify-center flex-wrap">
                   <a href={`/consultas/${consulta.id}`} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="sm">Ver</Button>
                   </a>
@@ -210,6 +235,20 @@ export default function ConsultasPage() {
                     >
                       Editar
                     </Button>
+                  )}
+                  {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => abrirModalReceta(consulta)}
+                    >
+                      {consulta.receta ? 'Receta' : 'Crear Receta'}
+                    </Button>
+                  )}
+                  {consulta.receta && (
+                    <a href={`/recetas/${consulta.receta.id}`} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">Ver Receta</Button>
+                    </a>
                   )}
                 </td>
               </tr>
@@ -248,7 +287,7 @@ export default function ConsultasPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal Consulta */}
       <Dialog open={modalAbierto} onOpenChange={cerrarModal}>
         <DialogContent className="w-full sm:max-w-4xl">
           <DialogHeader>
@@ -266,6 +305,32 @@ export default function ConsultasPage() {
                 fetchConsultas()
               }}
             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Receta */}
+      <Dialog open={modalRecetaAbierto} onOpenChange={setModalRecetaAbierto}>
+        <DialogContent className="w-full sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{recetaId ? 'Editar Receta' : 'Nueva Receta'}</DialogTitle>
+            <DialogDescription>
+              Agrega los medicamentos e indicaciones del tratamiento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {recetaConsultaId && (
+              <EditarRecetaForm
+                consultaId={recetaConsultaId}
+                recetaId={recetaId}
+                initialIndicaciones={recetaIndicaciones}
+                onGuardado={() => {
+                  setModalRecetaAbierto(false)
+                  fetchConsultas()
+                }}
+                onCancelar={() => setModalRecetaAbierto(false)}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
