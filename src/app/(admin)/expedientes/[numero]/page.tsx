@@ -46,9 +46,9 @@ interface ConsultaEntry {
   veterinario: { id: string; nombre: string }
   receta?: { id: string; folio?: number } | null
   evaluacion_clinica?: {
-    datos_generales?: { edad?: string; peso?: string; [key: string]: unknown }
-    estado_general?: { temperatura?: string; fc?: string; fr?: string; [key: string]: unknown }
-    diagnostico?: { diagnostico?: string; pronostico?: string; [key: string]: unknown }
+    datos_generales?: { edad?: string; peso?: string; [key: string]: string | undefined }
+    estado_general?: { temperatura?: string; fc?: string; fr?: string; actitud?: string; [key: string]: string | undefined }
+    diagnostico?: { diagnostico?: string; pronostico?: string; [key: string]: string | undefined }
     [key: string]: unknown
   }
 }
