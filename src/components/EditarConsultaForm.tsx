@@ -240,7 +240,7 @@ interface Props {
   consulta: ConsultaFormData | null;
   citaData?: CitaData | null;
   onClose: () => void;
-  onSuccess: (mensaje: string) => void;
+  onSuccess: (mensaje: string, id: string) => void;
 }
 
 interface Cliente {
@@ -336,7 +336,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
         },
   
         estado_general: {
-          vacunas: true,
+          vacunas: undefined,
           desparasitacion: undefined, 
           tipo_desparasitacion: [],
           actitud: '',
@@ -622,6 +622,8 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
   )}
 
   const onSubmit = async (data: ConsultaFormData) => {
+    // Abrir pestaña en blanco sincrónicamente (antes del await) para evitar popup blocker
+    const printTab = window.open('', '_blank');
     setGuardando(true);
     setError(null);
   
@@ -706,18 +708,21 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
           payload,
           { withCredentials: true }
         );
-        onSuccess("Consulta actualizada");
+        if (printTab) printTab.location.href = `/consultas/${consulta.id}`;
+        onSuccess("Consulta actualizada", consulta.id);
       } else {
-        await axios.post(
+        const { data: nuevaConsulta } = await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/consultas`,
           payload,
           { withCredentials: true }
         );
-        onSuccess("Consulta creada");
+        if (printTab) printTab.location.href = `/consultas/${nuevaConsulta.id}`;
+        onSuccess("Consulta creada", nuevaConsulta.id);
       }
   
       onClose();
     } catch (e: unknown) {
+      if (printTab) printTab.close();
       const err = e as { response?: { data?: { message?: string } } };
       setError(err.response?.data?.message || "Error al guardar consulta");
     } finally {
@@ -2647,6 +2652,26 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
 
                     <FormField
                       control={form.control}
+                      name="evaluacion_clinica.sistemas.sistema_urogenital.descarga_vulva_prepucio"
+                      rules={{
+                        validate: (value) => {
+                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
+                          if (!na && value == null) {
+                            return "Campo obligatorio"
+                          }
+                          return true
+                        }
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descarga vulva/prepucio</FormLabel>
+                          <FormControl><Input { ...field } disabled={!tabsEnabled} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name="evaluacion_clinica.sistemas.sistema_urogenital.ha_gestado"
                       rules={{
                         validate: (value) => {
@@ -2702,26 +2727,6 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="evaluacion_clinica.sistemas.sistema_urogenital.descarga_vulva_prepucio"
-                      rules={{
-                        validate: (value) => {
-                          const na = form.getValues("evaluacion_clinica.sistemas.sistema_urogenital.na")
-                          if (!na && value == null) {
-                            return "Campo obligatorio"
-                          }
-                          return true
-                        }
-                      }}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descarga vulva/prepucio</FormLabel>
-                          <FormControl><Input { ...field } disabled={!tabsEnabled} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
                 </>
               )}
@@ -2771,7 +2776,7 @@ export function EditarConsultaForm({ consulta, citaData, onClose, onSuccess }: P
                         }
                       }}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="col-span-3">
                           <FormLabel>Alopecia</FormLabel>
                           <Select
                             onValueChange={(value) => {

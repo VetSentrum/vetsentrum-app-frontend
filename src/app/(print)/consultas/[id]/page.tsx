@@ -23,7 +23,7 @@ interface Empresa {
 
 type ConsultaConRelaciones = ConsultaFormData & {
   folio?: number
-  drive_file_id?: string
+  mega_file_id?: string | null
   mascota?: {
     nombre: string
     raza?: string
@@ -40,11 +40,17 @@ function Campo({ label, value }: { label: string; value?: string | number | bool
   const texto =
     value === true ? 'Sí' :
     value === false ? 'No' :
-    value != null && value !== '' ? String(value) : '—'
+    value != null && value !== '' ? String(value) : null
   return (
     <div className="flex gap-2 text-sm leading-snug">
       <span className="font-semibold min-w-[160px] text-gray-700">{label}:</span>
-      <span className="text-gray-900">{texto}</span>
+      {texto !== null ? (
+        <span className="text-gray-900">{texto}</span>
+      ) : (
+        <span className="text-[10px] italic text-gray-300 border border-dashed border-gray-200 px-1.5 rounded self-center leading-4">
+          sin datos
+        </span>
+      )}
     </div>
   )
 }
@@ -62,7 +68,13 @@ function DatoBloque({ label, value }: { label: string; value?: string | number |
   return (
     <div className="flex flex-col">
       <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</span>
-      <span className="text-sm font-medium text-gray-900">{value ?? '—'}</span>
+      {value != null && value !== '' ? (
+        <span className="text-sm font-medium text-gray-900">{value}</span>
+      ) : (
+        <span className="text-[10px] italic text-gray-300 border border-dashed border-gray-200 px-1.5 rounded leading-4 self-start mt-0.5">
+          sin datos
+        </span>
+      )}
     </div>
   )
 }
@@ -103,14 +115,36 @@ export default function ConsultaImprimirPage() {
       .catch(() => {})
   }, [])
 
-  const handleDescargarPDF = async () => {
+  const guardarPdf = async () => {
     if (!printAreaRef.current || !consulta) return
     setGenerando(true)
     try {
       const html2pdf = (await import('html2pdf.js')).default
       const folio = `C-${consulta.mascota?.expediente ?? 0}-${consulta.folio ?? 0}`
+      const root = printAreaRef.current
 
-      html2pdf()
+      // Convierte oklch → rgb en texto CSS usando canvas
+      const cvs = document.createElement('canvas')
+      cvs.width = cvs.height = 1
+      const ctx = cvs.getContext('2d', { willReadFrequently: true })!
+      const fixOklch = (s: string) => s.replace(/oklch\([^)]*\)/g, m => {
+        try {
+          ctx.clearRect(0, 0, 1, 1)
+          ctx.fillStyle = 'rgba(0,0,0,0)'
+          ctx.fillStyle = m
+          ctx.fillRect(0, 0, 1, 1)
+          const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+          return a === 0 ? 'transparent' : `rgb(${r},${g},${b})`
+        } catch { return m }
+      })
+
+      // Extrae todo el CSS del CSSOM actual y reemplaza oklch — antes de que html2canvas lo procese
+      const cssFixed = Array.from(document.styleSheets).flatMap(sheet => {
+        try { return Array.from(sheet.cssRules || []).map(r => fixOklch(r.cssText)) }
+        catch { return [] }
+      }).join('\n')
+
+      await html2pdf()
         .set({
           margin: [10, 10, 10, 10],
           filename: `${folio}.pdf`,
@@ -118,41 +152,20 @@ export default function ConsultaImprimirPage() {
           html2canvas: {
             scale: 2,
             useCORS: true,
+            backgroundColor: '#ffffff',
             onclone: (clonedDoc: Document) => {
-              const cvs = document.createElement('canvas')
-              cvs.width = cvs.height = 1
-              const ctx = cvs.getContext('2d', { willReadFrequently: true })!
-              const toRgb = (v: string): string => {
-                try {
-                  ctx.clearRect(0, 0, 1, 1)
-                  ctx.fillStyle = v
-                  ctx.fillRect(0, 0, 1, 1)
-                  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
-                  return a === 0 ? 'transparent' : `rgb(${r},${g},${b})`
-                } catch { return v }
-              }
-              const props = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color']
-              const origEls = Array.from(document.querySelectorAll('*'))
-              const cloneEls = Array.from(clonedDoc.querySelectorAll('*'))
-              origEls.forEach((orig, i) => {
-                const clone = cloneEls[i] as HTMLElement | undefined
-                if (!clone || !(clone as HTMLElement).style) return
-                const cs = window.getComputedStyle(orig as HTMLElement)
-                props.forEach(p => {
-                  const v = cs.getPropertyValue(p)
-                  if (v) (clone as HTMLElement).style.setProperty(p, toRgb(v))
-                })
-              })
+              // Reemplaza todos los stylesheets del clon con la versión sin oklch
+              clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(e => e.remove())
+              const s = clonedDoc.createElement('style')
+              s.textContent = cssFixed
+              clonedDoc.head.appendChild(s)
             },
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         })
-        .from(printAreaRef.current!)
+        .from(root)
         .save()
-        .finally(() => setGenerando(false))
-    } catch (err) {
-      console.error('Error generando PDF:', err)
-      alert('Error al generar el PDF.')
+    } finally {
       setGenerando(false)
     }
   }
@@ -182,8 +195,8 @@ export default function ConsultaImprimirPage() {
     <div className="min-h-screen bg-gray-100 py-6 print:bg-white print:p-0">
       {/* Barra de acciones — solo en pantalla */}
       <div className="max-w-3xl mx-auto flex justify-end gap-3 mb-4 print:hidden px-4">
-        <Button variant="outline" onClick={handleDescargarPDF} disabled={generando}>
-          {generando ? 'Generando...' : 'Descargar PDF'}
+        <Button variant="outline" onClick={guardarPdf} disabled={generando}>
+          {generando ? 'Generando...' : 'Guardar PDF'}
         </Button>
         <Button onClick={() => window.print()}>Imprimir</Button>
       </div>

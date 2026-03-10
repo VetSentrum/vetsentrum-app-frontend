@@ -35,11 +35,20 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     }
   }
 
+  let nombreApp = "Vet'Sentrum"
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/empresa`, { cache: 'no-store' })
+    if (res.ok) {
+      const empresa = await res.json()
+      nombreApp = empresa?.nombre_app || empresa?.nombre || "Vet'Sentrum"
+    }
+  } catch {}
+
   return (
     <div className="flex h-screen">
       {/* Barra lateral */}
       <aside className="w-48 bg-gray-900 text-white flex flex-col p-4">
-        <h1 className="text-2xl font-bold mb-8">Vet&apos;Sentrum</h1>
+        <h1 className="text-2xl font-bold mb-8">{nombreApp}</h1>
         <nav className="flex flex-col gap-4">
           <a href="/dashboard" className="p-3 rounded-lg hover:bg-gray-800">Dashboard</a>
 
@@ -51,6 +60,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {/* Solo visible si es admin */}
           {user.rol === "admin" && (
             <a href="/empresa" className="p-3 rounded-lg hover:bg-gray-800">Empresa</a>
+          )}
+
+          {/* Expedientes — visible para todos los roles */}
+          {(user.rol === "admin" || user.rol === "recepcion" || user.rol === "veterinario") && (
+            <Link href="/expedientes" className="p-3 rounded-lg hover:bg-gray-800">Expedientes</Link>
           )}
 
           {/* Visible para admin y recepcion */}

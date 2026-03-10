@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 
 interface EmpresaForm {
   nombre: string;
+  nombre_app: string;
   subtitulo: string;
   universidad: string;
   direccion: string;
@@ -31,6 +32,7 @@ export default function EmpresaPage() {
   const { register, handleSubmit, reset } = useForm<EmpresaForm>({
     defaultValues: {
       nombre: '',
+      nombre_app: '',
       subtitulo: '',
       universidad: '',
       direccion: '',
@@ -51,6 +53,7 @@ export default function EmpresaPage() {
         if (res.data) {
           reset({
             nombre: res.data.nombre ?? '',
+            nombre_app: res.data.nombre_app ?? '',
             subtitulo: res.data.subtitulo ?? '',
             universidad: res.data.universidad ?? '',
             direccion: res.data.direccion ?? '',
@@ -96,6 +99,14 @@ export default function EmpresaPage() {
             <div className="col-span-2">
               <Label>Nombre de la clínica *</Label>
               <Input {...register('nombre')} placeholder="Ej. Clínica Veterinaria VetSentrum" />
+            </div>
+
+            <div className="col-span-2">
+              <Label>Nombre de la app (barra lateral)</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                Nombre corto que aparece en el sidebar. Si se deja vacío, se usa el nombre completo de la clínica.
+              </p>
+              <Input {...register('nombre_app')} placeholder="Ej. VetSentrum" />
             </div>
 
             <div className="col-span-2">

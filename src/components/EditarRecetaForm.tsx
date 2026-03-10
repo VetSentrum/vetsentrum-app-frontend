@@ -204,17 +204,22 @@ export function EditarRecetaForm({
     }
     setError(null)
     setGuardando(true)
+    // Abrir pestaña en blanco sincrónicamente para evitar popup blocker
+    const printTab = window.open('', '_blank')
 
     try {
       if (recetaId) {
         await axios.patch(`${API}/recetas/${recetaId}`, { indicaciones: renglones }, { withCredentials: true })
+        if (printTab) printTab.location.href = `/recetas/${recetaId}`
         onGuardado?.(recetaId)
       } else {
         const { data } = await axios.post(`${API}/recetas`, { consulta_id: consultaId, indicaciones: renglones }, { withCredentials: true })
         setRecetaId(data.id)
+        if (printTab) printTab.location.href = `/recetas/${data.id}`
         onGuardado?.(data.id)
       }
     } catch (err) {
+      if (printTab) printTab.close()
       console.error(err)
       setError('Error al guardar la receta.')
     } finally {

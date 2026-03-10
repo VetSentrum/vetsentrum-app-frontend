@@ -102,6 +102,24 @@ export default function ConsultasPage() {
     setModalRecetaAbierto(true)
   }
 
+  const eliminarConsulta = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta consulta? Esta acción no se puede deshacer.')) return
+    try {
+      await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/consultas/${id}`, { withCredentials: true })
+      setMensajeGlobal('Consulta eliminada')
+      fetchConsultas()
+    } catch { alert('Error al eliminar la consulta') }
+  }
+
+  const eliminarReceta = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta receta?')) return
+    try {
+      await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/recetas/${id}`, { withCredentials: true })
+      setMensajeGlobal('Receta eliminada')
+      fetchConsultas()
+    } catch { alert('Error al eliminar la receta') }
+  }
+
   const handleSort = (field: 'fecha' | 'mascota_nombre' | 'cliente_nombre') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -223,33 +241,43 @@ export default function ConsultasPage() {
                 <td className="p-2 text-center">{consulta.mascota?.cliente?.nombre_completo ?? '—'}</td>
                 <td className="p-2 text-center">{consulta.motivo}</td>
                 <td className="p-2 text-center">{consulta.veterinario?.nombre ?? '—'}</td>
-                <td className="p-2 text-center flex gap-2 justify-center flex-wrap">
-                  <a href={`/consultas/${consulta.id}`} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" size="sm">Ver</Button>
-                  </a>
-                  {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => abrirModal(consulta)}
-                    >
-                      Editar
-                    </Button>
-                  )}
-                  {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => abrirModalReceta(consulta)}
-                    >
-                      {consulta.receta ? 'Receta' : 'Crear Receta'}
-                    </Button>
-                  )}
-                  {consulta.receta && (
-                    <a href={`/recetas/${consulta.receta.id}`} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm">Ver Receta</Button>
-                    </a>
-                  )}
+                <td className="p-2">
+                  <div className="flex flex-col gap-1">
+                    {/* Grupo Consulta */}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-gray-400 w-14 shrink-0">Consulta</span>
+                      <a href={`/consultas/${consulta.id}`} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm">Ver</Button>
+                      </a>
+                      {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
+                        <Button variant="outline" size="sm" onClick={() => abrirModal(consulta)}>Editar</Button>
+                      )}
+                      {usuario?.rol === 'admin' && (
+                        <Button variant="destructive" size="sm" onClick={() => eliminarConsulta(consulta.id)}>Eliminar</Button>
+                      )}
+                    </div>
+                    {/* Grupo Receta */}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-gray-400 w-14 shrink-0">Receta</span>
+                      {consulta.receta ? (
+                        <>
+                          <a href={`/recetas/${consulta.receta.id}`} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm">Ver</Button>
+                          </a>
+                          {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
+                            <Button variant="outline" size="sm" onClick={() => abrirModalReceta(consulta)}>Editar</Button>
+                          )}
+                          {usuario?.rol === 'admin' && (
+                            <Button variant="destructive" size="sm" onClick={() => eliminarReceta(consulta.receta!.id)}>Eliminar</Button>
+                          )}
+                        </>
+                      ) : (
+                        (usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
+                          <Button variant="outline" size="sm" onClick={() => abrirModalReceta(consulta)}>Crear</Button>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </td>
               </tr>
             ))}
