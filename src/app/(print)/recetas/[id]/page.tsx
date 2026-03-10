@@ -39,7 +39,10 @@ interface RecetaConRelaciones {
       cliente?: { nombre_completo: string }
     }
     veterinario: { nombre: string }
-    evaluacion_clinica?: any
+    evaluacion_clinica?: {
+      datos_generales?: { edad?: string; peso?: string; [key: string]: unknown }
+      [key: string]: unknown
+    }
   }
 }
 
