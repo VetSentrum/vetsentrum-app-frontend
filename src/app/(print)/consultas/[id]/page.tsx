@@ -23,7 +23,6 @@ interface Empresa {
 
 type ConsultaConRelaciones = ConsultaFormData & {
   folio?: number
-  mega_file_id?: string | null
   mascota?: {
     nombre: string
     raza?: string

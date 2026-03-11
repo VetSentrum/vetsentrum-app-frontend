@@ -4,32 +4,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
+import { ESPECIES_ICONOS, calcularEdad } from '@/lib/utils'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
-
-const ESPECIES_ICONOS: Record<string, string> = {
-  Canino: '🐕',
-  Felino: '🐈',
-  Ave: '🦜',
-  Conejo: '🐇',
-}
-
-// Calcula la edad actual dado la edad en meses al momento del registro y la fecha de registro
-function calcularEdad(meses: number, fechaCreacion: string): string {
-  const edadMs = meses * 30.44 * 24 * 60 * 60 * 1000
-  const nacimiento = new Date(new Date(fechaCreacion).getTime() - edadMs)
-  const hoy = new Date()
-  let totalMeses =
-    (hoy.getFullYear() - nacimiento.getFullYear()) * 12 +
-    (hoy.getMonth() - nacimiento.getMonth())
-  if (hoy.getDate() < nacimiento.getDate()) totalMeses -= 1
-  if (totalMeses < 0) totalMeses = 0
-  const años = Math.floor(totalMeses / 12)
-  const m = totalMeses % 12
-  if (años === 0) return m <= 1 ? `${m} mes` : `${m} meses`
-  if (m === 0) return años === 1 ? '1 año' : `${años} años`
-  return `${años} año${años !== 1 ? 's' : ''} ${m} mes${m !== 1 ? 'es' : ''}`
-}
 
 interface PesoEntry {
   id: string

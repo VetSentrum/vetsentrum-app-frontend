@@ -24,7 +24,6 @@ interface RecetaConRelaciones {
   id: string
   folio?: number
   indicaciones: RenglonReceta[]
-  mega_file_id?: string | null
   consulta: {
     id: string
     folio?: number

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(wc -l /c/Proyectos/VetSentrum/vetsentrum-app-frontend/src/app/\\\\\\(admin\\\\\\)/layout.tsx /c/Proyectos/VetSentrum/vetsentrum-app-frontend/src/app/layout.tsx /c/Proyectos/VetSentrum/vetsentrum-app-frontend/src/components/EditarConsultaForm.tsx)"
     ]
   }
 }

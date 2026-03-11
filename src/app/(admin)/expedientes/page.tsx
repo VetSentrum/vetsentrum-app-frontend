@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
+import { ESPECIES_ICONOS, calcularEdad } from '@/lib/utils'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -19,29 +20,6 @@ interface Mascota {
   cliente_nombre: string
   cliente?: { telefono: string }
   activo: boolean
-}
-
-const ESPECIES_ICONOS: Record<string, string> = {
-  Canino: '🐕',
-  Felino: '🐈',
-  Ave: '🦜',
-  Conejo: '🐇',
-}
-
-function calcularEdad(meses: number, fechaCreacion: string): string {
-  const edadMs = meses * 30.44 * 24 * 60 * 60 * 1000
-  const nacimiento = new Date(new Date(fechaCreacion).getTime() - edadMs)
-  const hoy = new Date()
-  let totalMeses =
-    (hoy.getFullYear() - nacimiento.getFullYear()) * 12 +
-    (hoy.getMonth() - nacimiento.getMonth())
-  if (hoy.getDate() < nacimiento.getDate()) totalMeses -= 1
-  if (totalMeses < 0) totalMeses = 0
-  const años = Math.floor(totalMeses / 12)
-  const m = totalMeses % 12
-  if (años === 0) return m <= 1 ? `${m} mes` : `${m} meses`
-  if (m === 0) return años === 1 ? '1 año' : `${años} años`
-  return `${años}a ${m}m`
 }
 
 export default function ExpedientesPage() {
@@ -129,7 +107,7 @@ export default function ExpedientesPage() {
               {paginadas.map(m => {
                 const icono = ESPECIES_ICONOS[m.especie?.nombre ?? ''] ?? '🐾'
                 const edad = m.edad_aproximada != null && m.fecha_creacion
-                  ? calcularEdad(m.edad_aproximada, m.fecha_creacion)
+                  ? calcularEdad(m.edad_aproximada, m.fecha_creacion, true)
                   : '—'
                 return (
                   <tr
