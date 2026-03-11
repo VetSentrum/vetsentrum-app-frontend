@@ -12,7 +12,10 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/clientes') ||
     pathname.startsWith('/mascotas') ||
     pathname.startsWith('/citas') ||
-    pathname.startsWith('/consultas')
+    pathname.startsWith('/consultas') ||
+    pathname.startsWith('/expedientes') ||
+    pathname.startsWith('/empresa') ||
+    pathname.startsWith('/modulos')
 
   if (!token && isProtectedRoute) {
     return NextResponse.redirect(new URL('/login', req.url))
@@ -34,5 +37,8 @@ export const config = {
     '/mascotas/:path*',
     '/citas/:path*',
     '/consultas/:path*',
+    '/expedientes/:path*',
+    '/empresa/:path*',
+    '/modulos/:path*',
   ],
 }
