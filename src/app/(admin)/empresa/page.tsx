@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -186,6 +187,7 @@ export default function EmpresaPage() {
   const [modulos, setModulos] = useState<ModulosData | null>(null);
   const [whatsappModal, setWhatsappModal] = useState(false);
   const [togglingModulo, setTogglingModulo] = useState<string | null>(null);
+  const [puedeVerModulos, setPuedeVerModulos] = useState(false);
 
   const { register, handleSubmit, reset } = useForm<EmpresaForm>({
     defaultValues: {
@@ -212,6 +214,14 @@ export default function EmpresaPage() {
   }, []);
 
   useEffect(() => {
+    try {
+      const token = document.cookie.split('; ').find(r => r.startsWith('token='))?.split('=')[1];
+      if (token) {
+        const payload = jwtDecode<{ email?: string }>(token);
+        setPuedeVerModulos(payload.email === 'carlos-al.ma@hotmail.com');
+      }
+    } catch { /* ignore */ }
+
     Promise.all([
       axios.get(`${API}/empresa`, { withCredentials: true }),
       axios.get<ModulosData>(`${API}/empresa/modulos`, { withCredentials: true }),
@@ -360,7 +370,7 @@ export default function EmpresaPage() {
         </div>
 
         {/* ── Módulos ─────────────────────────────────────────────────── */}
-        {modulos && (
+        {puedeVerModulos && modulos && (
           <div className="bg-white border rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b">
               <h2 className="text-lg font-semibold">Módulos</h2>
