@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -214,13 +213,9 @@ export default function EmpresaPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const token = document.cookie.split('; ').find(r => r.startsWith('token='))?.split('=')[1];
-      if (token) {
-        const payload = jwtDecode<{ email?: string }>(token);
-        setPuedeVerModulos(payload.email === 'carlos-al.ma@hotmail.com');
-      }
-    } catch { /* ignore */ }
+    axios.get<{ email?: string }>(`${API}/auth/me`, { withCredentials: true })
+      .then(({ data }) => setPuedeVerModulos(data.email === 'carlos-al.ma@hotmail.com'))
+      .catch(() => {});
 
     Promise.all([
       axios.get(`${API}/empresa`, { withCredentials: true }),
