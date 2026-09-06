@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { ExportarButton } from '@/components/ExportarButton'
+import { ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar'
 import { ESPECIES_ICONOS, calcularEdad } from '@/lib/utils'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
@@ -22,6 +23,19 @@ interface Mascota {
   cliente?: { telefono: string }
   activo: boolean
 }
+
+const COLUMNAS_EXPORT_EXPEDIENTES: ColumnaExportable<Mascota>[] = [
+  { encabezado: '#EXP', valor: m => m.expediente },
+  { encabezado: 'Paciente', valor: m => m.nombre },
+  { encabezado: 'Sexo', valor: m => m.sexo },
+  { encabezado: 'Especie', valor: m => m.especie?.nombre ?? '' },
+  { encabezado: 'Raza', valor: m => m.raza },
+  { encabezado: 'Edad', valor: m => m.edad_aproximada != null && m.fecha_creacion
+    ? calcularEdad(m.edad_aproximada, m.fecha_creacion, true)
+    : '—' },
+  { encabezado: 'Propietario', valor: m => m.cliente_nombre },
+  { encabezado: 'Estado', valor: m => m.activo ? 'Activo' : 'Inactivo' },
+]
 
 export default function ExpedientesPage() {
   const router = useRouter()
@@ -79,21 +93,7 @@ export default function ExpedientesPage() {
     setPagina(1)
   }
 
-  const filasExportables = filtradas.map(m => {
-    const edad = m.edad_aproximada != null && m.fecha_creacion
-      ? calcularEdad(m.edad_aproximada, m.fecha_creacion, true)
-      : '—'
-    return {
-      '#EXP': m.expediente,
-      Paciente: m.nombre,
-      Sexo: m.sexo,
-      Especie: m.especie?.nombre ?? '',
-      Raza: m.raza,
-      Edad: edad,
-      Propietario: m.cliente_nombre,
-      Estado: m.activo ? 'Activo' : 'Inactivo',
-    }
-  })
+  const filasExportables = filasDesdeColumnas(filtradas, COLUMNAS_EXPORT_EXPEDIENTES)
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -115,7 +115,7 @@ export default function ExpedientesPage() {
         <ExportarButton
           rol={rol}
           filas={filasExportables}
-          columnas={['#EXP', 'Paciente', 'Sexo', 'Especie', 'Raza', 'Edad', 'Propietario', 'Estado']}
+          columnas={encabezadosDeColumnas(COLUMNAS_EXPORT_EXPEDIENTES)}
           nombreArchivo="expedientes"
         />
       </div>

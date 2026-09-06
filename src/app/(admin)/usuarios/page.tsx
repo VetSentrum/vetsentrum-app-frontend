@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader }  from '@/components/ui/dialog'
 import { Button }                               from '@/components/ui/button'
 import { EditarUsuarioForm }                    from '@/components/EditarUsuarioForm'
 import { ExportarButton }                       from '@/components/ExportarButton'
+import { ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar'
 import { DialogDescription, DialogTitle }       from '@radix-ui/react-dialog'
 
 interface Usuario {
@@ -16,6 +17,13 @@ interface Usuario {
   rol: 'admin' | 'recepcion' | 'veterinario'
   activo: boolean
 }
+
+const COLUMNAS_EXPORT_USUARIOS: ColumnaExportable<Usuario>[] = [
+  { encabezado: 'Nombre', valor: u => u.nombre },
+  { encabezado: 'Email', valor: u => u.email },
+  { encabezado: 'Rol', valor: u => u.rol },
+  { encabezado: 'Activo', valor: u => u.activo ? 'Sí' : 'No' },
+]
 
 export default function UsuariosPage() {
   const router                                        = useRouter()
@@ -68,12 +76,7 @@ export default function UsuariosPage() {
     setMostrarInactivos(false)
   }
 
-  const filasExportables = usuariosFiltrados.map(u => ({
-    Nombre: u.nombre,
-    Email: u.email,
-    Rol: u.rol,
-    Activo: u.activo ? 'Sí' : 'No',
-  }))
+  const filasExportables = filasDesdeColumnas(usuariosFiltrados, COLUMNAS_EXPORT_USUARIOS)
 
   const abrirModal = (usuario: Usuario | null) => {
     setUsuarioSeleccionado(usuario)
@@ -112,7 +115,7 @@ export default function UsuariosPage() {
           <ExportarButton
             rol={miRol}
             filas={filasExportables}
-            columnas={['Nombre', 'Email', 'Rol', 'Activo']}
+            columnas={encabezadosDeColumnas(COLUMNAS_EXPORT_USUARIOS)}
             nombreArchivo="usuarios"
           />
 

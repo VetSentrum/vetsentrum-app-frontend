@@ -1,5 +1,28 @@
 import * as XLSX from 'xlsx'
 
+/**
+ * Fuente única de un export: cada columna declara su encabezado y cómo leerlo
+ * del dato original. `filasDesdeColumnas` y `encabezadosDeColumnas` derivan
+ * SIEMPRE de la misma lista, así que encabezado y valor nunca pueden
+ * desincronizarse (a diferencia de mantener un arreglo de nombres aparte).
+ */
+export interface ColumnaExportable<T> {
+  encabezado: string
+  valor: (item: T) => unknown
+}
+
+export function filasDesdeColumnas<T>(items: T[], columnas: ColumnaExportable<T>[]): Record<string, unknown>[] {
+  return items.map((item) => {
+    const fila: Record<string, unknown> = {}
+    for (const col of columnas) fila[col.encabezado] = col.valor(item)
+    return fila
+  })
+}
+
+export function encabezadosDeColumnas<T>(columnas: ColumnaExportable<T>[]): string[] {
+  return columnas.map((c) => c.encabezado)
+}
+
 export interface HojaExportable {
   nombre: string
   filas: Record<string, unknown>[]

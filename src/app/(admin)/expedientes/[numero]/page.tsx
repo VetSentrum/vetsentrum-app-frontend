@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useExportPermission } from '@/lib/useExportPermission'
-import { exportarXlsx, HojaExportable } from '@/lib/exportar'
+import { exportarXlsx, HojaExportable, ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -253,6 +253,46 @@ const HISTORIALES: { key: HistorialKey; label: string }[] = [
   { key: 'recetas', label: 'Historial de Recetas' },
 ]
 
+const fechaCortaExport = (f: string) => new Date(f).toLocaleDateString('es-MX', {
+  timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric',
+})
+
+// El folio depende del # de expediente, así que las columnas se arman con una
+// fábrica en vez de un arreglo fijo — sigue siendo una única declaración por hoja.
+const columnasHistorialConsultas = (numeroExpediente: number): ColumnaExportable<ConsultaEntry>[] => [
+  { encabezado: 'Folio', valor: c => c.folio ? `C-${numeroExpediente}-${c.folio}` : '' },
+  { encabezado: 'Fecha', valor: c => fechaCortaExport(c.fecha) },
+  { encabezado: 'Veterinario', valor: c => c.veterinario.nombre },
+  { encabezado: 'Motivo', valor: c => c.motivo },
+  { encabezado: 'Edad', valor: c => c.evaluacion_clinica?.datos_generales?.edad ?? '' },
+  { encabezado: 'Peso (kg)', valor: c => c.evaluacion_clinica?.datos_generales?.peso ?? '' },
+  { encabezado: 'Temperatura (°C)', valor: c => c.evaluacion_clinica?.estado_general?.temperatura ?? '' },
+  { encabezado: 'FC (lpm)', valor: c => c.evaluacion_clinica?.estado_general?.fc ?? '' },
+  { encabezado: 'FR (rpm)', valor: c => c.evaluacion_clinica?.estado_general?.fr ?? '' },
+  { encabezado: 'Actitud', valor: c => c.evaluacion_clinica?.estado_general?.actitud ?? '' },
+  { encabezado: 'Diagnóstico', valor: c => c.evaluacion_clinica?.diagnostico?.diagnostico ?? '' },
+  { encabezado: 'Pronóstico', valor: c => c.evaluacion_clinica?.diagnostico?.pronostico ?? '' },
+]
+
+const COLUMNAS_HISTORIAL_PESOS_EXPEDIENTE: ColumnaExportable<PesoEntry>[] = [
+  { encabezado: 'Fecha', valor: p => fechaCortaExport(p.fecha) },
+  { encabezado: 'Peso (kg)', valor: p => p.peso },
+]
+
+interface RenglonRecetaConContexto {
+  consulta: ConsultaEntry
+  renglon: RenglonReceta
+}
+
+const columnasHistorialRecetas = (numeroExpediente: number): ColumnaExportable<RenglonRecetaConContexto>[] => [
+  { encabezado: 'Folio', valor: ({ consulta: c }) => c.receta?.folio ? `R-${numeroExpediente}-${c.receta.folio}` : '' },
+  { encabezado: 'Fecha consulta', valor: ({ consulta: c }) => fechaCortaExport(c.fecha) },
+  { encabezado: 'Veterinario', valor: ({ consulta: c }) => c.veterinario.nombre },
+  { encabezado: '#', valor: ({ renglon: r }) => r.numero },
+  { encabezado: 'Medicamento', valor: ({ renglon: r }) => r.medicamento },
+  { encabezado: 'Indicación', valor: ({ renglon: r }) => r.indicacion },
+]
+
 function ExportarExpedienteModal({
   abierto,
   expediente,
@@ -273,69 +313,38 @@ function ExportarExpedienteModal({
     })
   }
 
-  const fechaCorta = (f: string) => new Date(f).toLocaleDateString('es-MX', {
-    timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric',
-  })
-
   const exportar = () => {
     const hojas: HojaExportable[] = []
 
     if (seleccion.has('consultas')) {
+      const columnas = columnasHistorialConsultas(expediente.expediente)
       hojas.push({
         nombre: 'Historial de Consultas',
-        columnas: ['Folio', 'Fecha', 'Veterinario', 'Motivo', 'Edad', 'Peso (kg)', 'Temperatura (°C)', 'FC (lpm)', 'FR (rpm)', 'Actitud', 'Diagnóstico', 'Pronóstico'],
-        filas: expediente.consultas.map(c => {
-          const ec = c.evaluacion_clinica
-          return {
-            Folio: c.folio ? `C-${expediente.expediente}-${c.folio}` : '',
-            Fecha: fechaCorta(c.fecha),
-            Veterinario: c.veterinario.nombre,
-            Motivo: c.motivo,
-            Edad: ec?.datos_generales?.edad ?? '',
-            'Peso (kg)': ec?.datos_generales?.peso ?? '',
-            'Temperatura (°C)': ec?.estado_general?.temperatura ?? '',
-            'FC (lpm)': ec?.estado_general?.fc ?? '',
-            'FR (rpm)': ec?.estado_general?.fr ?? '',
-            Actitud: ec?.estado_general?.actitud ?? '',
-            Diagnóstico: ec?.diagnostico?.diagnostico ?? '',
-            Pronóstico: ec?.diagnostico?.pronostico ?? '',
-          }
-        }),
+        columnas: encabezadosDeColumnas(columnas),
+        filas: filasDesdeColumnas(expediente.consultas, columnas),
       })
     }
 
     if (seleccion.has('pesos')) {
       hojas.push({
         nombre: 'Historial de Pesos',
-        columnas: ['Fecha', 'Peso (kg)'],
-        filas: expediente.pesos.map(p => ({
-          Fecha: fechaCorta(p.fecha),
-          'Peso (kg)': p.peso,
-        })),
+        columnas: encabezadosDeColumnas(COLUMNAS_HISTORIAL_PESOS_EXPEDIENTE),
+        filas: filasDesdeColumnas(expediente.pesos, COLUMNAS_HISTORIAL_PESOS_EXPEDIENTE),
       })
     }
 
     if (seleccion.has('recetas')) {
-      const filas: Record<string, unknown>[] = []
+      const renglonesConContexto: RenglonRecetaConContexto[] = []
       expediente.consultas
         .filter(c => c.receta)
-        .forEach(c => {
-          const renglones = c.receta?.indicaciones ?? []
-          renglones.forEach(r => {
-            filas.push({
-              Folio: c.receta?.folio ? `R-${expediente.expediente}-${c.receta.folio}` : '',
-              'Fecha consulta': fechaCorta(c.fecha),
-              Veterinario: c.veterinario.nombre,
-              '#': r.numero,
-              Medicamento: r.medicamento,
-              Indicación: r.indicacion,
-            })
-          })
+        .forEach(consulta => {
+          (consulta.receta?.indicaciones ?? []).forEach(renglon => renglonesConContexto.push({ consulta, renglon }))
         })
+      const columnas = columnasHistorialRecetas(expediente.expediente)
       hojas.push({
         nombre: 'Historial de Recetas',
-        columnas: ['Folio', 'Fecha consulta', 'Veterinario', '#', 'Medicamento', 'Indicación'],
-        filas,
+        columnas: encabezadosDeColumnas(columnas),
+        filas: filasDesdeColumnas(renglonesConContexto, columnas),
       })
     }
 

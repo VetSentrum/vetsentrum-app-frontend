@@ -8,6 +8,7 @@
   import { EditarMascotaForm } from '@/components/EditarMascotaForm';
   import { EditarClienteForm } from '@/components/EditarClienteForm';
   import { ExportarButton } from '@/components/ExportarButton';
+  import { ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar';
 
   interface ClienteDetalle {
     id: string;
@@ -176,20 +177,22 @@
       if (clienteFiltro) router.push('/mascotas');
     };
 
-    const filasExportables = mascotasOrdenadas.map((m) => ({
-      '#EXP': m.expediente,
-      Nombre: m.nombre,
-      Especie: m.especie?.nombre ?? 'Desconocido',
-      Raza: m.raza,
-      Edad: m.fecha_creacion && m.edad_aproximada
-        ? (() => {
-            const { años, meses } = calcularEdadActual(m.fecha_creacion, Number(m.edad_aproximada));
-            return `${años}a ${meses}m`;
-          })()
-        : '—',
-      Peso: m.peso,
-      Dueño: m.cliente_nombre,
-    }));
+    // Declarada aquí (no a nivel de módulo) porque depende de calcularEdadActual, local a este componente.
+    const COLUMNAS_EXPORT_MASCOTAS: ColumnaExportable<Mascota>[] = [
+      { encabezado: '#EXP', valor: m => m.expediente },
+      { encabezado: 'Nombre', valor: m => m.nombre },
+      { encabezado: 'Especie', valor: m => m.especie?.nombre ?? 'Desconocido' },
+      { encabezado: 'Raza', valor: m => m.raza },
+      { encabezado: 'Edad', valor: m => {
+        if (!m.fecha_creacion || !m.edad_aproximada) return '—';
+        const { años, meses } = calcularEdadActual(m.fecha_creacion, Number(m.edad_aproximada));
+        return `${años}a ${meses}m`;
+      } },
+      { encabezado: 'Peso', valor: m => m.peso },
+      { encabezado: 'Dueño', valor: m => m.cliente_nombre },
+    ];
+
+    const filasExportables = filasDesdeColumnas(mascotasOrdenadas, COLUMNAS_EXPORT_MASCOTAS);
 
     return (
       <main className="max-w-6xl mx-auto mt-10">
@@ -210,7 +213,7 @@
             <ExportarButton
               rol={rolActual}
               filas={filasExportables}
-              columnas={['#EXP', 'Nombre', 'Especie', 'Raza', 'Edad', 'Peso', 'Dueño']}
+              columnas={encabezadosDeColumnas(COLUMNAS_EXPORT_MASCOTAS)}
               nombreArchivo="mascotas"
             />
             {(rolActual === 'recepcion' || rolActual === 'admin') && (

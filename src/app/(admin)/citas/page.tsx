@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { EditarCitaForm } from '@/components/EditarCitaForm'
 import { ExportarButton } from '@/components/ExportarButton'
+import { ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar'
 import axios from 'axios'
 
 interface Cita {
@@ -17,6 +18,18 @@ interface Cita {
   motivo: string
   estado: string
 }
+
+// Única declaración de columnas del export: encabezado + valor viven juntos,
+// así nunca se desincronizan entre la plantilla (sin resultados) y los datos reales.
+const COLUMNAS_EXPORT_CITAS: ColumnaExportable<Cita>[] = [
+  { encabezado: 'Fecha', valor: c => c.fecha ? new Date(c.fecha).toLocaleString('es-MX', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC',
+  }) : '' },
+  { encabezado: 'Cliente', valor: c => c.cliente_nombre },
+  { encabezado: 'Mascota', valor: c => c.mascota_nombre },
+  { encabezado: 'Motivo', valor: c => c.motivo },
+  { encabezado: 'Estado', valor: c => c.estado },
+]
 
 interface Usuario {
   id: string
@@ -161,15 +174,7 @@ export default function CitasPage() {
     setPagina(1)
   }
 
-  const filasExportables = citasOrdenadas.map(c => ({
-    Fecha: c.fecha ? new Date(c.fecha).toLocaleString('es-MX', {
-      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC',
-    }) : '',
-    Cliente: c.cliente_nombre,
-    Mascota: c.mascota_nombre,
-    Motivo: c.motivo,
-    Estado: c.estado,
-  }))
+  const filasExportables = filasDesdeColumnas(citasOrdenadas, COLUMNAS_EXPORT_CITAS)
 
   return (
     <main className="max-w-6xl mx-auto mt-10">
@@ -219,7 +224,7 @@ export default function CitasPage() {
           <ExportarButton
             rol={usuario?.rol}
             filas={filasExportables}
-            columnas={['Fecha', 'Cliente', 'Mascota', 'Motivo', 'Estado']}
+            columnas={encabezadosDeColumnas(COLUMNAS_EXPORT_CITAS)}
             nombreArchivo="citas"
           />
           <Button onClick={() => abrirModal(null)}>Nueva Cita</Button>

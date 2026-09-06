@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { EditarConsultaForm, ConsultaFormData } from '@/components/EditarConsultaForm'
 import { EditarRecetaForm, RenglonReceta } from '@/components/EditarRecetaForm'
-import { ExportarButton } from '@/components/ExportarButton'
+import { ExportarButton, HojaOpcionalExport } from '@/components/ExportarButton'
+import { ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar'
 import axios from 'axios'
 
 interface Consulta {
@@ -16,7 +17,7 @@ interface Consulta {
   mascota_id: string
   veterinario_id: string
   motivo: string
-  evaluacion_clinica?: Record<string, unknown>
+  evaluacion_clinica?: { datos_generales?: { peso?: string | number; [key: string]: unknown }; [key: string]: unknown }
   receta?: { id: string } | null
   mascota?: {
     nombre: string
@@ -24,6 +25,32 @@ interface Consulta {
   }
   veterinario?: { id: string; nombre: string }
 }
+
+const fechaExportable = (fecha: string) => fecha ? new Date(fecha).toLocaleDateString('es-MX', {
+  year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+}) : ''
+
+const COLUMNAS_EXPORT_CONSULTAS: ColumnaExportable<Consulta>[] = [
+  { encabezado: 'Fecha', valor: c => fechaExportable(c.fecha) },
+  { encabezado: 'Mascota', valor: c => c.mascota?.nombre ?? '' },
+  { encabezado: 'Cliente', valor: c => c.mascota?.cliente?.nombre_completo ?? '' },
+  { encabezado: 'Motivo', valor: c => c.motivo },
+  { encabezado: 'Veterinario', valor: c => c.veterinario?.nombre ?? '' },
+  { encabezado: 'Receta', valor: c => c.receta ? 'Sí' : 'No' },
+]
+
+// Aún no hay un módulo de Pesos: se ofrece como opción al exportar Consultas,
+// a partir del peso ya registrado en la evaluación clínica de cada consulta.
+const COLUMNAS_EXPORT_PESO_EXTRA: ColumnaExportable<Consulta>[] = [
+  { encabezado: 'Peso (kg)', valor: c => c.evaluacion_clinica?.datos_generales?.peso ?? '' },
+]
+
+const COLUMNAS_HISTORIAL_PESOS: ColumnaExportable<Consulta>[] = [
+  { encabezado: 'Fecha', valor: c => fechaExportable(c.fecha) },
+  { encabezado: 'Mascota', valor: c => c.mascota?.nombre ?? '' },
+  { encabezado: 'Cliente', valor: c => c.mascota?.cliente?.nombre_completo ?? '' },
+  { encabezado: 'Peso (kg)', valor: c => c.evaluacion_clinica?.datos_generales?.peso ?? '' },
+]
 
 interface Usuario {
   id: string
@@ -178,16 +205,24 @@ export default function ConsultasPage() {
     setPagina(1)
   }
 
-  const filasExportables = consultasOrdenadas.map(c => ({
-    Fecha: c.fecha ? new Date(c.fecha).toLocaleDateString('es-MX', {
-      year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC',
-    }) : '',
-    Mascota: c.mascota?.nombre ?? '',
-    Cliente: c.mascota?.cliente?.nombre_completo ?? '',
-    Motivo: c.motivo,
-    Veterinario: c.veterinario?.nombre ?? '',
-    Receta: c.receta ? 'Sí' : 'No',
-  }))
+  const filasExportables = filasDesdeColumnas(consultasOrdenadas, COLUMNAS_EXPORT_CONSULTAS)
+
+  const hojasOpcionalesExport: HojaOpcionalExport[] = [
+    {
+      key: 'pesos',
+      etiqueta: 'Incluir historial de pesos (columna en Consultas + hoja aparte)',
+      columnasExtra: encabezadosDeColumnas(COLUMNAS_EXPORT_PESO_EXTRA),
+      filasExtra: filasDesdeColumnas(consultasOrdenadas, COLUMNAS_EXPORT_PESO_EXTRA),
+      hoja: {
+        nombre: 'Historial de Pesos',
+        columnas: encabezadosDeColumnas(COLUMNAS_HISTORIAL_PESOS),
+        filas: filasDesdeColumnas(
+          consultasOrdenadas.filter(c => c.evaluacion_clinica?.datos_generales?.peso),
+          COLUMNAS_HISTORIAL_PESOS,
+        ),
+      },
+    },
+  ]
 
   return (
     <main className="max-w-6xl mx-auto mt-10">
@@ -221,8 +256,9 @@ export default function ConsultasPage() {
           <ExportarButton
             rol={usuario?.rol}
             filas={filasExportables}
-            columnas={['Fecha', 'Mascota', 'Cliente', 'Motivo', 'Veterinario', 'Receta']}
+            columnas={encabezadosDeColumnas(COLUMNAS_EXPORT_CONSULTAS)}
             nombreArchivo="consultas"
+            hojasOpcionales={hojasOpcionalesExport}
           />
           {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
             <Button onClick={() => abrirModal(null)}>Nueva Consulta</Button>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { EditarClienteForm } from '@/components/EditarClienteForm';
 import { EditarMascotaForm } from '@/components/EditarMascotaForm';
 import { ExportarButton } from '@/components/ExportarButton';
+import { ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar';
 import axios from 'axios';
 
 interface Mascota {
@@ -37,6 +38,15 @@ interface Cliente {
   activo: boolean;
   mascotas: Mascota[];
 }
+
+const COLUMNAS_EXPORT_CLIENTES: ColumnaExportable<Cliente>[] = [
+  { encabezado: 'Nombre', valor: c => c.nombre_completo },
+  { encabezado: 'Teléfono', valor: c => c.telefono },
+  { encabezado: 'Email', valor: c => c.email ?? '' },
+  { encabezado: 'Dirección', valor: c => c.direccion ?? '' },
+  { encabezado: 'Mascotas', valor: c => (c.mascotas ?? []).map(m => m.nombre).join(', ') },
+  { encabezado: 'Activo', valor: c => c.activo ? 'Sí' : 'No' },
+];
 
 export default function ClientesPage() {
   const router                                        = useRouter();
@@ -143,14 +153,7 @@ export default function ClientesPage() {
     setPagina(1);
   };
 
-  const filasExportables = clientes.map((c) => ({
-    Nombre: c.nombre_completo,
-    Teléfono: c.telefono,
-    Email: c.email ?? '',
-    Dirección: c.direccion ?? '',
-    Mascotas: (c.mascotas ?? []).map((m) => m.nombre).join(', '),
-    Activo: c.activo ? 'Sí' : 'No',
-  }));
+  const filasExportables = filasDesdeColumnas(clientes, COLUMNAS_EXPORT_CLIENTES);
 
   if (initialLoading) return <p>Cargando clientes...</p>;
 
@@ -180,7 +183,7 @@ export default function ClientesPage() {
           <ExportarButton
             rol={rolActual}
             filas={filasExportables}
-            columnas={['Nombre', 'Teléfono', 'Email', 'Dirección', 'Mascotas', 'Activo']}
+            columnas={encabezadosDeColumnas(COLUMNAS_EXPORT_CLIENTES)}
             nombreArchivo="clientes"
           />
 
