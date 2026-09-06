@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { EditarClienteForm } from '@/components/EditarClienteForm';
 import { EditarMascotaForm } from '@/components/EditarMascotaForm';
+import { ExportarButton } from '@/components/ExportarButton';
 import axios from 'axios';
 
 interface Mascota {
@@ -135,13 +136,29 @@ export default function ClientesPage() {
   const totalPaginas = Math.ceil(clientes.length / porPagina);
   const clientesPaginados = clientes.slice((pagina - 1) * porPagina, pagina * porPagina);
 
+  const limpiarFiltros = () => {
+    setBusqueda('');
+    setBusquedaDebounced('');
+    setMostrarInactivos(false);
+    setPagina(1);
+  };
+
+  const filasExportables = clientes.map((c) => ({
+    Nombre: c.nombre_completo,
+    Teléfono: c.telefono,
+    Email: c.email ?? '',
+    Dirección: c.direccion ?? '',
+    Mascotas: (c.mascotas ?? []).map((m) => m.nombre).join(', '),
+    Activo: c.activo ? 'Sí' : 'No',
+  }));
+
   if (initialLoading) return <p>Cargando clientes...</p>;
 
   return (
     <main className="max-w-6xl mx-auto mt-10">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Clientes</h1>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap items-center">
           <input
             type="text"
             placeholder="Buscar cliente..."
@@ -158,7 +175,15 @@ export default function ClientesPage() {
             />
             Mostrar inactivos
           </label>
-          
+
+          <Button variant="outline" onClick={limpiarFiltros}>Limpiar filtros</Button>
+          <ExportarButton
+            rol={rolActual}
+            filas={filasExportables}
+            columnas={['Nombre', 'Teléfono', 'Email', 'Dirección', 'Mascotas', 'Activo']}
+            nombreArchivo="clientes"
+          />
+
           {(rolActual === 'recepcion' || rolActual === 'admin') && (
             <Button onClick={() => abrirModal(null)}>Nuevo Cliente</Button>
           )}

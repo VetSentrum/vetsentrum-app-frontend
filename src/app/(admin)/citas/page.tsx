@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { EditarCitaForm } from '@/components/EditarCitaForm'
+import { ExportarButton } from '@/components/ExportarButton'
 import axios from 'axios'
 
 interface Cita {
@@ -150,11 +151,31 @@ export default function CitasPage() {
   const totalPaginas = Math.ceil(citasFiltradas.length / porPagina)
   const citasPaginadas = citasOrdenadas.slice((pagina - 1) * porPagina, pagina * porPagina)
 
+  // ---- filtros ----
+  const limpiarFiltros = () => {
+    setBusqueda('')
+    setMostrarCompletadas(false)
+    setMostrarCanceladas(false)
+    setFechaDesde(primerDiaMes)
+    setFechaHasta(ultimoDiaMes)
+    setPagina(1)
+  }
+
+  const filasExportables = citasOrdenadas.map(c => ({
+    Fecha: c.fecha ? new Date(c.fecha).toLocaleString('es-MX', {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC',
+    }) : '',
+    Cliente: c.cliente_nombre,
+    Mascota: c.mascota_nombre,
+    Motivo: c.motivo,
+    Estado: c.estado,
+  }))
+
   return (
     <main className="max-w-6xl mx-auto mt-10">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Citas</h1>
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-4 items-center flex-wrap">
           <input
             type="text"
             placeholder="Buscar..."
@@ -194,6 +215,13 @@ export default function CitasPage() {
               className="border rounded px-2 py-1 text-sm"
             />
           </div>
+          <Button variant="outline" onClick={limpiarFiltros}>Limpiar filtros</Button>
+          <ExportarButton
+            rol={usuario?.rol}
+            filas={filasExportables}
+            columnas={['Fecha', 'Cliente', 'Mascota', 'Motivo', 'Estado']}
+            nombreArchivo="citas"
+          />
           <Button onClick={() => abrirModal(null)}>Nueva Cita</Button>
         </div>
       </div>

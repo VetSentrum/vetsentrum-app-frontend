@@ -7,6 +7,7 @@
   import { Button } from '@/components/ui/button';
   import { EditarMascotaForm } from '@/components/EditarMascotaForm';
   import { EditarClienteForm } from '@/components/EditarClienteForm';
+  import { ExportarButton } from '@/components/ExportarButton';
 
   interface ClienteDetalle {
     id: string;
@@ -169,11 +170,32 @@
       return { años, meses }
     }
 
+    const limpiarFiltros = () => {
+      setBusqueda('');
+      setPagina(1);
+      if (clienteFiltro) router.push('/mascotas');
+    };
+
+    const filasExportables = mascotasOrdenadas.map((m) => ({
+      '#EXP': m.expediente,
+      Nombre: m.nombre,
+      Especie: m.especie?.nombre ?? 'Desconocido',
+      Raza: m.raza,
+      Edad: m.fecha_creacion && m.edad_aproximada
+        ? (() => {
+            const { años, meses } = calcularEdadActual(m.fecha_creacion, Number(m.edad_aproximada));
+            return `${años}a ${meses}m`;
+          })()
+        : '—',
+      Peso: m.peso,
+      Dueño: m.cliente_nombre,
+    }));
+
     return (
       <main className="max-w-6xl mx-auto mt-10">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Mascotas</h1>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap items-center">
           <input
             type="text"
             placeholder="Buscar mascota..."
@@ -184,6 +206,13 @@
             }}
             className="border rounded px-3 py-1"
           />
+            <Button variant="outline" onClick={limpiarFiltros}>Limpiar filtros</Button>
+            <ExportarButton
+              rol={rolActual}
+              filas={filasExportables}
+              columnas={['#EXP', 'Nombre', 'Especie', 'Raza', 'Edad', 'Peso', 'Dueño']}
+              nombreArchivo="mascotas"
+            />
             {(rolActual === 'recepcion' || rolActual === 'admin') && (
               <Button onClick={() => abrirModal(null)}>Nueva Mascota</Button>
             )}

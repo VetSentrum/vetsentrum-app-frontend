@@ -5,6 +5,11 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
 import { ESPECIES_ICONOS, calcularEdad } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { useExportPermission } from '@/lib/useExportPermission'
+import { exportarXlsx, HojaExportable } from '@/lib/exportar'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -15,13 +20,20 @@ interface PesoEntry {
   consulta_id?: string
 }
 
+interface RenglonReceta {
+  numero: string
+  tipo: 'item' | 'subitem'
+  medicamento: string
+  indicacion: string
+}
+
 interface ConsultaEntry {
   id: string
   folio?: number
   fecha: string
   motivo: string
   veterinario: { id: string; nombre: string }
-  receta?: { id: string; folio?: number } | null
+  receta?: { id: string; folio?: number; indicaciones?: RenglonReceta[] } | null
   evaluacion_clinica?: {
     datos_generales?: { edad?: string; peso?: string; [key: string]: string | undefined }
     estado_general?: { temperatura?: string; fc?: string; fr?: string; actitud?: string; [key: string]: string | undefined }
@@ -231,12 +243,142 @@ function ConsultaRow({ c, expediente }: { c: ConsultaEntry; expediente: number }
   )
 }
 
+// ── Modal de exportación ──────────────────────────────────────────────────────
+
+type HistorialKey = 'consultas' | 'pesos' | 'recetas'
+
+const HISTORIALES: { key: HistorialKey; label: string }[] = [
+  { key: 'consultas', label: 'Historial de Consultas' },
+  { key: 'pesos', label: 'Historial de Pesos' },
+  { key: 'recetas', label: 'Historial de Recetas' },
+]
+
+function ExportarExpedienteModal({
+  abierto,
+  expediente,
+  onClose,
+}: {
+  abierto: boolean
+  expediente: Expediente
+  onClose: () => void
+}) {
+  const [seleccion, setSeleccion] = useState<Set<HistorialKey>>(new Set(['consultas']))
+
+  const toggle = (key: HistorialKey) => {
+    setSeleccion(prev => {
+      const nuevo = new Set(prev)
+      if (nuevo.has(key)) nuevo.delete(key)
+      else nuevo.add(key)
+      return nuevo
+    })
+  }
+
+  const fechaCorta = (f: string) => new Date(f).toLocaleDateString('es-MX', {
+    timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+
+  const exportar = () => {
+    const hojas: HojaExportable[] = []
+
+    if (seleccion.has('consultas')) {
+      hojas.push({
+        nombre: 'Historial de Consultas',
+        columnas: ['Folio', 'Fecha', 'Veterinario', 'Motivo', 'Edad', 'Peso (kg)', 'Temperatura (°C)', 'FC (lpm)', 'FR (rpm)', 'Actitud', 'Diagnóstico', 'Pronóstico'],
+        filas: expediente.consultas.map(c => {
+          const ec = c.evaluacion_clinica
+          return {
+            Folio: c.folio ? `C-${expediente.expediente}-${c.folio}` : '',
+            Fecha: fechaCorta(c.fecha),
+            Veterinario: c.veterinario.nombre,
+            Motivo: c.motivo,
+            Edad: ec?.datos_generales?.edad ?? '',
+            'Peso (kg)': ec?.datos_generales?.peso ?? '',
+            'Temperatura (°C)': ec?.estado_general?.temperatura ?? '',
+            'FC (lpm)': ec?.estado_general?.fc ?? '',
+            'FR (rpm)': ec?.estado_general?.fr ?? '',
+            Actitud: ec?.estado_general?.actitud ?? '',
+            Diagnóstico: ec?.diagnostico?.diagnostico ?? '',
+            Pronóstico: ec?.diagnostico?.pronostico ?? '',
+          }
+        }),
+      })
+    }
+
+    if (seleccion.has('pesos')) {
+      hojas.push({
+        nombre: 'Historial de Pesos',
+        columnas: ['Fecha', 'Peso (kg)'],
+        filas: expediente.pesos.map(p => ({
+          Fecha: fechaCorta(p.fecha),
+          'Peso (kg)': p.peso,
+        })),
+      })
+    }
+
+    if (seleccion.has('recetas')) {
+      const filas: Record<string, unknown>[] = []
+      expediente.consultas
+        .filter(c => c.receta)
+        .forEach(c => {
+          const renglones = c.receta?.indicaciones ?? []
+          renglones.forEach(r => {
+            filas.push({
+              Folio: c.receta?.folio ? `R-${expediente.expediente}-${c.receta.folio}` : '',
+              'Fecha consulta': fechaCorta(c.fecha),
+              Veterinario: c.veterinario.nombre,
+              '#': r.numero,
+              Medicamento: r.medicamento,
+              Indicación: r.indicacion,
+            })
+          })
+        })
+      hojas.push({
+        nombre: 'Historial de Recetas',
+        columnas: ['Folio', 'Fecha consulta', 'Veterinario', '#', 'Medicamento', 'Indicación'],
+        filas,
+      })
+    }
+
+    exportarXlsx(`expediente_${expediente.expediente}`, hojas)
+    onClose()
+  }
+
+  return (
+    <Dialog open={abierto} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Exportar expediente #{expediente.expediente}</DialogTitle>
+          <DialogDescription>
+            Selecciona los historiales a incluir. Se generará un archivo Excel (.xlsx) con una hoja por
+            cada uno (por eso aquí no se ofrece CSV: un CSV no admite varias hojas).
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          {HISTORIALES.map(h => (
+            <label key={h.key} className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={seleccion.has(h.key)} onCheckedChange={() => toggle(h.key)} />
+              {h.label}
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={exportar} disabled={seleccion.size === 0}>Aceptar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function ExpedienteDetallePage() {
   const { numero } = useParams<{ numero: string }>()
   const [data, setData] = useState<Expediente | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [rol, setRol] = useState<string | null>(null)
+  const [modalExportarAbierto, setModalExportarAbierto] = useState(false)
+  const puedeExportar = useExportPermission(rol)
 
   useEffect(() => {
     axios
@@ -244,6 +386,12 @@ export default function ExpedienteDetallePage() {
       .then(res => setData(res.data))
       .catch(e => setError(e.response?.data?.message ?? 'No se pudo cargar el expediente'))
   }, [numero])
+
+  useEffect(() => {
+    axios.get(`${API}/auth/me`, { withCredentials: true })
+      .then(res => setRol(res.data.rol))
+      .catch(() => setRol(null))
+  }, [])
 
   if (error) return (
     <div className="max-w-3xl mx-auto">
@@ -308,8 +456,21 @@ export default function ExpedienteDetallePage() {
         <Link href="/expedientes" className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-1">
           ← Volver a expedientes
         </Link>
-        <span className="text-xs font-mono text-gray-400">EXPEDIENTE #{data.expediente}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-mono text-gray-400">EXPEDIENTE #{data.expediente}</span>
+          {puedeExportar && (
+            <Button variant="outline" size="sm" onClick={() => setModalExportarAbierto(true)}>
+              Exportar
+            </Button>
+          )}
+        </div>
       </div>
+
+      <ExportarExpedienteModal
+        abierto={modalExportarAbierto}
+        expediente={data}
+        onClose={() => setModalExportarAbierto(false)}
+      />
 
       {/* Tarjeta paciente */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">

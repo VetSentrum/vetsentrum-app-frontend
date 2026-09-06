@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
+import { ExportarButton } from '@/components/ExportarButton'
 import { ESPECIES_ICONOS, calcularEdad } from '@/lib/utils'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
@@ -30,6 +31,7 @@ export default function ExpedientesPage() {
   const [debouncedBusqueda, setDebouncedBusqueda] = useState('')
   const [pagina, setPagina] = useState(1)
   const [porPagina, setPorPagina] = useState(20)
+  const [rol, setRol] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedBusqueda(busqueda); setPagina(1) }, 300)
@@ -50,6 +52,12 @@ export default function ExpedientesPage() {
 
   useEffect(() => { cargar() }, [cargar])
 
+  useEffect(() => {
+    axios.get(`${API}/auth/me`, { withCredentials: true })
+      .then(res => setRol(res.data.rol))
+      .catch(() => setRol(null))
+  }, [])
+
   const filtradas = debouncedBusqueda.trim()
     ? mascotas.filter(m => {
         const q = debouncedBusqueda.toLowerCase()
@@ -65,6 +73,28 @@ export default function ExpedientesPage() {
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / porPagina))
   const paginadas = filtradas.slice((pagina - 1) * porPagina, pagina * porPagina)
 
+  const limpiarFiltros = () => {
+    setBusqueda('')
+    setDebouncedBusqueda('')
+    setPagina(1)
+  }
+
+  const filasExportables = filtradas.map(m => {
+    const edad = m.edad_aproximada != null && m.fecha_creacion
+      ? calcularEdad(m.edad_aproximada, m.fecha_creacion, true)
+      : '—'
+    return {
+      '#EXP': m.expediente,
+      Paciente: m.nombre,
+      Sexo: m.sexo,
+      Especie: m.especie?.nombre ?? '',
+      Raza: m.raza,
+      Edad: edad,
+      Propietario: m.cliente_nombre,
+      Estado: m.activo ? 'Activo' : 'Inactivo',
+    }
+  })
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -73,13 +103,20 @@ export default function ExpedientesPage() {
       </div>
 
       {/* Buscador */}
-      <div className="mb-5">
+      <div className="mb-5 flex gap-3 items-center flex-wrap">
         <input
           type="text"
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar por #EXP, nombre, raza o propietario…"
-          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
+          className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
+        />
+        <Button variant="outline" onClick={limpiarFiltros}>Limpiar filtros</Button>
+        <ExportarButton
+          rol={rol}
+          filas={filasExportables}
+          columnas={['#EXP', 'Paciente', 'Sexo', 'Especie', 'Raza', 'Edad', 'Propietario', 'Estado']}
+          nombreArchivo="expedientes"
         />
       </div>
 

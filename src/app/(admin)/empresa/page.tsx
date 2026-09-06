@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface EmpresaForm {
   nombre: string;
@@ -34,6 +35,12 @@ interface ModulosData {
 }
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+const ROLES_EXPORTACION_OPCIONES: { key: string; label: string }[] = [
+  { key: 'admin', label: 'Administrador' },
+  { key: 'recepcion', label: 'Recepción' },
+  { key: 'veterinario', label: 'Veterinario' },
+];
 
 // ── Módulo WhatsApp: modal de credenciales ─────────────────────────────────
 
@@ -187,6 +194,8 @@ export default function EmpresaPage() {
   const [whatsappModal, setWhatsappModal] = useState(false);
   const [togglingModulo, setTogglingModulo] = useState<string | null>(null);
   const [puedeVerModulos, setPuedeVerModulos] = useState(false);
+  const [rolesExportacion, setRolesExportacion] = useState<string[]>([]);
+  const [guardandoExportacion, setGuardandoExportacion] = useState(false);
 
   const { register, handleSubmit, reset } = useForm<EmpresaForm>({
     defaultValues: {
@@ -211,6 +220,30 @@ export default function EmpresaPage() {
       setModulos(data);
     } catch { /* ignore */ }
   }, []);
+
+  const cargarRolesExportacion = useCallback(async () => {
+    try {
+      const { data } = await axios.get<{ roles: string[] }>(`${API}/empresa/exportacion`, { withCredentials: true });
+      setRolesExportacion(data.roles ?? []);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { cargarRolesExportacion(); }, [cargarRolesExportacion]);
+
+  const toggleRolExportacion = async (rol: string) => {
+    const nuevosRoles = rolesExportacion.includes(rol)
+      ? rolesExportacion.filter((r) => r !== rol)
+      : [...rolesExportacion, rol];
+    setRolesExportacion(nuevosRoles);
+    setGuardandoExportacion(true);
+    try {
+      await axios.patch(`${API}/empresa/exportacion`, { roles: nuevosRoles }, { withCredentials: true });
+    } catch {
+      cargarRolesExportacion();
+    } finally {
+      setGuardandoExportacion(false);
+    }
+  };
 
   useEffect(() => {
     axios.get<{ email?: string }>(`${API}/auth/me`, { withCredentials: true })
@@ -410,6 +443,33 @@ export default function EmpresaPage() {
             </div>
           </div>
         )}
+
+        {/* ── Permisos de exportación ─────────────────────────────────── */}
+        <div className="bg-white border rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b">
+            <h2 className="text-lg font-semibold">Permisos de exportación</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Define qué roles pueden exportar listados a Excel (.xlsx) o CSV.
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Esto solo oculta o muestra el botón &quot;Exportar&quot;: no cambia qué datos puede ver cada rol
+              en las tablas de cada módulo (esos permisos ya existen desde antes, por módulo).
+            </p>
+          </div>
+          <div className="p-6 flex flex-wrap items-center gap-6">
+            {ROLES_EXPORTACION_OPCIONES.map((opcion) => (
+              <label key={opcion.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={rolesExportacion.includes(opcion.key)}
+                  onCheckedChange={() => toggleRolExportacion(opcion.key)}
+                  disabled={guardandoExportacion}
+                />
+                {opcion.label}
+              </label>
+            ))}
+            {guardandoExportacion && <span className="text-xs text-gray-400">Guardando...</span>}
+          </div>
+        </div>
       </div>
     </>
   );

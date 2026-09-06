@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { EditarConsultaForm, ConsultaFormData } from '@/components/EditarConsultaForm'
 import { EditarRecetaForm, RenglonReceta } from '@/components/EditarRecetaForm'
+import { ExportarButton } from '@/components/ExportarButton'
 import axios from 'axios'
 
 interface Consulta {
@@ -170,6 +171,24 @@ export default function ConsultasPage() {
   const totalPaginas = Math.max(1, Math.ceil(consultasFiltradas.length / porPagina))
   const consultasPaginadas = consultasOrdenadas.slice((pagina - 1) * porPagina, pagina * porPagina)
 
+  const limpiarFiltros = () => {
+    setBusqueda('')
+    setFechaDesde(primerDiaMes)
+    setFechaHasta(ultimoDiaMes)
+    setPagina(1)
+  }
+
+  const filasExportables = consultasOrdenadas.map(c => ({
+    Fecha: c.fecha ? new Date(c.fecha).toLocaleDateString('es-MX', {
+      year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+    }) : '',
+    Mascota: c.mascota?.nombre ?? '',
+    Cliente: c.mascota?.cliente?.nombre_completo ?? '',
+    Motivo: c.motivo,
+    Veterinario: c.veterinario?.nombre ?? '',
+    Receta: c.receta ? 'Sí' : 'No',
+  }))
+
   return (
     <main className="max-w-6xl mx-auto mt-10">
       <div className="flex items-center justify-between mb-4">
@@ -198,6 +217,13 @@ export default function ConsultasPage() {
               className="border rounded px-2 py-1 text-sm"
             />
           </div>
+          <Button variant="outline" onClick={limpiarFiltros}>Limpiar filtros</Button>
+          <ExportarButton
+            rol={usuario?.rol}
+            filas={filasExportables}
+            columnas={['Fecha', 'Mascota', 'Cliente', 'Motivo', 'Veterinario', 'Receta']}
+            nombreArchivo="consultas"
+          />
           {(usuario?.rol === 'admin' || usuario?.rol === 'veterinario') && (
             <Button onClick={() => abrirModal(null)}>Nueva Consulta</Button>
           )}

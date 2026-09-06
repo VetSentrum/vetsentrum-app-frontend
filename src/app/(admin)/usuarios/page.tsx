@@ -6,6 +6,7 @@ import { useRouter }                            from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader }  from '@/components/ui/dialog'
 import { Button }                               from '@/components/ui/button'
 import { EditarUsuarioForm }                    from '@/components/EditarUsuarioForm'
+import { ExportarButton }                       from '@/components/ExportarButton'
 import { DialogDescription, DialogTitle }       from '@radix-ui/react-dialog'
 
 interface Usuario {
@@ -19,6 +20,7 @@ interface Usuario {
 export default function UsuariosPage() {
   const router                                        = useRouter()
   const [miUsuarioId, setMiUsuarioId]                 = useState<string | null>(null)
+  const [miRol, setMiRol]                             = useState<string | null>(null)
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null)
   const [usuarios, setUsuarios]                       = useState<Usuario[]>([])
   const [mostrarInactivos, setMostrarInactivos]       = useState(false);
@@ -33,7 +35,8 @@ export default function UsuariosPage() {
     try {
       const { data: yo } = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, { withCredentials: true })
       setMiUsuarioId(yo.id)
-      
+      setMiRol(yo.rol)
+
       const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/usuarios?inactivos=${mostrarInactivos}`
 
       const { data: lista } = await axios.get<Usuario[]>(url, { withCredentials: true })
@@ -60,6 +63,18 @@ export default function UsuariosPage() {
     u.email.toLowerCase().includes(busqueda.toLowerCase())
   )
 
+  const limpiarFiltros = () => {
+    setBusqueda('')
+    setMostrarInactivos(false)
+  }
+
+  const filasExportables = usuariosFiltrados.map(u => ({
+    Nombre: u.nombre,
+    Email: u.email,
+    Rol: u.rol,
+    Activo: u.activo ? 'Sí' : 'No',
+  }))
+
   const abrirModal = (usuario: Usuario | null) => {
     setUsuarioSeleccionado(usuario)
     setModalAbierto(true)
@@ -75,7 +90,7 @@ export default function UsuariosPage() {
     <main className="max-w-6xl mx-auto mt-10">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Usuarios</h1>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap items-center">
           <input
             type="text"
             placeholder="Buscar usuario..."
@@ -92,6 +107,14 @@ export default function UsuariosPage() {
             />
             Mostrar inactivos
           </label>
+
+          <Button variant="outline" onClick={limpiarFiltros}>Limpiar filtros</Button>
+          <ExportarButton
+            rol={miRol}
+            filas={filasExportables}
+            columnas={['Nombre', 'Email', 'Rol', 'Activo']}
+            nombreArchivo="usuarios"
+          />
 
           <Button
             onClick={() => abrirModal(null)}
