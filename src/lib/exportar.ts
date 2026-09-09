@@ -56,8 +56,7 @@ function neutralizarFormulaCsv(valor: unknown): unknown {
   return valor
 }
 
-/** Genera y descarga un archivo .xlsx con una hoja por cada entrada de `hojas`. */
-export function exportarXlsx(nombreArchivo: string, hojas: HojaExportable[]) {
+function construirLibro(hojas: HojaExportable[]) {
   const libro = XLSX.utils.book_new()
   hojas.forEach((hoja) => {
     // Xlsx no es vulnerable a inyección de fórmulas por CSV: SheetJS tipa cada
@@ -66,7 +65,20 @@ export function exportarXlsx(nombreArchivo: string, hojas: HojaExportable[]) {
     const ws = XLSX.utils.json_to_sheet(filasOPlantilla(hoja.filas, hoja.columnas))
     XLSX.utils.book_append_sheet(libro, ws, sanitizarNombreHoja(hoja.nombre))
   })
-  XLSX.writeFile(libro, `${nombreArchivo}.xlsx`)
+  return libro
+}
+
+/** Genera y descarga un archivo .xlsx con una hoja por cada entrada de `hojas`. */
+export function exportarXlsx(nombreArchivo: string, hojas: HojaExportable[]) {
+  XLSX.writeFile(construirLibro(hojas), `${nombreArchivo}.xlsx`)
+}
+
+/**
+ * Construye el binario .xlsx (una hoja por entrada de `hojas`) y lo devuelve sin
+ * descargarlo — para empaquetarlo dentro de un ZIP.
+ */
+export function construirXlsxArrayBuffer(hojas: HojaExportable[]): ArrayBuffer {
+  return XLSX.write(construirLibro(hojas), { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
 }
 
 /** Genera y descarga un archivo .csv a partir de un único conjunto de filas. */

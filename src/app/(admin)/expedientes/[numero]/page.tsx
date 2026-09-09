@@ -9,7 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useExportPermission } from '@/lib/useExportPermission'
-import { exportarXlsx, HojaExportable, ColumnaExportable, filasDesdeColumnas, encabezadosDeColumnas } from '@/lib/exportar'
+import { exportarXlsx } from '@/lib/exportar'
+import { EmpresaDocumento } from '@/components/print/DocumentoConsulta'
+import {
+  hojasDelExpediente,
+  ExpedienteExportable,
+  SeleccionExpediente,
+} from '@/lib/expedienteExport'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -49,6 +55,13 @@ interface OtraMascota {
   activo: boolean
 }
 
+interface CitaEntry {
+  id: string
+  fecha_hora: string
+  motivo: string
+  estado: string
+}
+
 interface Expediente {
   id: string
   expediente: number
@@ -72,6 +85,7 @@ interface Expediente {
   }
   pesos: PesoEntry[]
   consultas: ConsultaEntry[]
+  citas: CitaEntry[]
 }
 
 // ── Sparkline SVG ────────────────────────────────────────────────────────────
@@ -245,134 +259,102 @@ function ConsultaRow({ c, expediente }: { c: ConsultaEntry; expediente: number }
 
 // ── Modal de exportación ──────────────────────────────────────────────────────
 
-type HistorialKey = 'consultas' | 'pesos' | 'recetas'
+type CategoriaKey = keyof SeleccionExpediente
 
-const HISTORIALES: { key: HistorialKey; label: string }[] = [
-  { key: 'consultas', label: 'Historial de Consultas' },
-  { key: 'pesos', label: 'Historial de Pesos' },
-  { key: 'recetas', label: 'Historial de Recetas' },
-]
-
-const fechaCortaExport = (f: string) => new Date(f).toLocaleDateString('es-MX', {
-  timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric',
-})
-
-// El folio depende del # de expediente, así que las columnas se arman con una
-// fábrica en vez de un arreglo fijo — sigue siendo una única declaración por hoja.
-const columnasHistorialConsultas = (numeroExpediente: number): ColumnaExportable<ConsultaEntry>[] => [
-  { encabezado: 'Folio', valor: c => c.folio ? `C-${numeroExpediente}-${c.folio}` : '' },
-  { encabezado: 'Fecha', valor: c => fechaCortaExport(c.fecha) },
-  { encabezado: 'Veterinario', valor: c => c.veterinario.nombre },
-  { encabezado: 'Motivo', valor: c => c.motivo },
-  { encabezado: 'Edad', valor: c => c.evaluacion_clinica?.datos_generales?.edad ?? '' },
-  { encabezado: 'Peso (kg)', valor: c => c.evaluacion_clinica?.datos_generales?.peso ?? '' },
-  { encabezado: 'Temperatura (°C)', valor: c => c.evaluacion_clinica?.estado_general?.temperatura ?? '' },
-  { encabezado: 'FC (lpm)', valor: c => c.evaluacion_clinica?.estado_general?.fc ?? '' },
-  { encabezado: 'FR (rpm)', valor: c => c.evaluacion_clinica?.estado_general?.fr ?? '' },
-  { encabezado: 'Actitud', valor: c => c.evaluacion_clinica?.estado_general?.actitud ?? '' },
-  { encabezado: 'Diagnóstico', valor: c => c.evaluacion_clinica?.diagnostico?.diagnostico ?? '' },
-  { encabezado: 'Pronóstico', valor: c => c.evaluacion_clinica?.diagnostico?.pronostico ?? '' },
-]
-
-const COLUMNAS_HISTORIAL_PESOS_EXPEDIENTE: ColumnaExportable<PesoEntry>[] = [
-  { encabezado: 'Fecha', valor: p => fechaCortaExport(p.fecha) },
-  { encabezado: 'Peso (kg)', valor: p => p.peso },
-]
-
-interface RenglonRecetaConContexto {
-  consulta: ConsultaEntry
-  renglon: RenglonReceta
-}
-
-const columnasHistorialRecetas = (numeroExpediente: number): ColumnaExportable<RenglonRecetaConContexto>[] => [
-  { encabezado: 'Folio', valor: ({ consulta: c }) => c.receta?.folio ? `R-${numeroExpediente}-${c.receta.folio}` : '' },
-  { encabezado: 'Fecha consulta', valor: ({ consulta: c }) => fechaCortaExport(c.fecha) },
-  { encabezado: 'Veterinario', valor: ({ consulta: c }) => c.veterinario.nombre },
-  { encabezado: '#', valor: ({ renglon: r }) => r.numero },
-  { encabezado: 'Medicamento', valor: ({ renglon: r }) => r.medicamento },
-  { encabezado: 'Indicación', valor: ({ renglon: r }) => r.indicacion },
+const CATEGORIAS: { key: CategoriaKey; label: string; nota?: string }[] = [
+  { key: 'consultas', label: 'Consultas', nota: 'PDF por consulta (con su receta si aplica)' },
+  { key: 'recetas', label: 'Recetas', nota: 'PDF sueltos (si no se eligen Consultas)' },
+  { key: 'citas', label: 'Citas', nota: 'sólo hoja de Excel' },
+  { key: 'pesos', label: 'Historial de pesos', nota: 'sólo hoja de Excel' },
 ]
 
 function ExportarExpedienteModal({
   abierto,
   expediente,
+  empresa,
   onClose,
 }: {
   abierto: boolean
   expediente: Expediente
+  empresa: EmpresaDocumento | null
   onClose: () => void
 }) {
-  const [seleccion, setSeleccion] = useState<Set<HistorialKey>>(new Set(['consultas']))
+  const [seleccion, setSeleccion] = useState<SeleccionExpediente>({
+    consultas: true, pesos: false, recetas: false, citas: false,
+  })
+  const [generando, setGenerando] = useState(false)
+  const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(null)
 
-  const toggle = (key: HistorialKey) => {
-    setSeleccion(prev => {
-      const nuevo = new Set(prev)
-      if (nuevo.has(key)) nuevo.delete(key)
-      else nuevo.add(key)
-      return nuevo
-    })
+  const algoSeleccionado = Object.values(seleccion).some(Boolean)
+  const exp = expediente as unknown as ExpedienteExportable
+
+  const toggle = (key: CategoriaKey) => {
+    setSeleccion(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const exportar = () => {
-    const hojas: HojaExportable[] = []
-
-    if (seleccion.has('consultas')) {
-      const columnas = columnasHistorialConsultas(expediente.expediente)
-      hojas.push({
-        nombre: 'Historial de Consultas',
-        columnas: encabezadosDeColumnas(columnas),
-        filas: filasDesdeColumnas(expediente.consultas, columnas),
-      })
-    }
-
-    if (seleccion.has('pesos')) {
-      hojas.push({
-        nombre: 'Historial de Pesos',
-        columnas: encabezadosDeColumnas(COLUMNAS_HISTORIAL_PESOS_EXPEDIENTE),
-        filas: filasDesdeColumnas(expediente.pesos, COLUMNAS_HISTORIAL_PESOS_EXPEDIENTE),
-      })
-    }
-
-    if (seleccion.has('recetas')) {
-      const renglonesConContexto: RenglonRecetaConContexto[] = []
-      expediente.consultas
-        .filter(c => c.receta)
-        .forEach(consulta => {
-          (consulta.receta?.indicaciones ?? []).forEach(renglon => renglonesConContexto.push({ consulta, renglon }))
-        })
-      const columnas = columnasHistorialRecetas(expediente.expediente)
-      hojas.push({
-        nombre: 'Historial de Recetas',
-        columnas: encabezadosDeColumnas(columnas),
-        filas: filasDesdeColumnas(renglonesConContexto, columnas),
-      })
-    }
-
-    exportarXlsx(`expediente_${expediente.expediente}`, hojas)
+  const descargarExcel = () => {
+    exportarXlsx(`expediente_${expediente.expediente}`, hojasDelExpediente(exp, seleccion))
     onClose()
   }
 
+  const descargarZip = async () => {
+    setGenerando(true)
+    setProgreso(null)
+    try {
+      const { exportarExpedienteZip } = await import('@/lib/exportarExpedienteZip')
+      await exportarExpedienteZip(exp, empresa, seleccion, (hechos, total) => setProgreso({ hechos, total }))
+      onClose()
+    } catch (e) {
+      console.error(e)
+      alert('No se pudo generar el ZIP del expediente.')
+    } finally {
+      setGenerando(false)
+      setProgreso(null)
+    }
+  }
+
   return (
-    <Dialog open={abierto} onOpenChange={(v) => { if (!v) onClose() }}>
+    <Dialog open={abierto} onOpenChange={(v) => { if (!v && !generando) onClose() }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Exportar expediente #{expediente.expediente}</DialogTitle>
           <DialogDescription>
-            Selecciona los historiales a incluir. Se generará un archivo Excel (.xlsx) con una hoja por
-            cada uno (por eso aquí no se ofrece CSV: un CSV no admite varias hojas).
+            Elige qué incluir. <strong>Descargar Excel</strong> genera un solo archivo .xlsx con una hoja
+            por categoría. <strong>Descargar ZIP</strong> incluye ese Excel más una carpeta con los PDF de
+            cada consulta y receta.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          {HISTORIALES.map(h => (
-            <label key={h.key} className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={seleccion.has(h.key)} onCheckedChange={() => toggle(h.key)} />
-              {h.label}
+          {CATEGORIAS.map(c => (
+            <label key={c.key} className="flex items-start gap-2 text-sm cursor-pointer">
+              <Checkbox
+                className="mt-0.5"
+                checked={seleccion[c.key]}
+                onCheckedChange={() => toggle(c.key)}
+                disabled={generando}
+              />
+              <span>
+                {c.label}
+                {c.nota && <span className="block text-xs text-gray-400">{c.nota}</span>}
+              </span>
             </label>
           ))}
         </div>
+        {generando && (
+          <p className="text-xs text-gray-500">
+            {progreso && progreso.total > 0
+              ? `Generando PDF ${progreso.hechos}/${progreso.total}…`
+              : 'Generando archivo…'}
+          </p>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={exportar} disabled={seleccion.size === 0}>Aceptar</Button>
+          <Button variant="outline" onClick={onClose} disabled={generando}>Cancelar</Button>
+          <Button variant="outline" onClick={descargarExcel} disabled={!algoSeleccionado || generando}>
+            Descargar Excel
+          </Button>
+          <Button onClick={descargarZip} disabled={!algoSeleccionado || generando}>
+            {generando ? 'Generando…' : 'Descargar ZIP'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -386,6 +368,7 @@ export default function ExpedienteDetallePage() {
   const [data, setData] = useState<Expediente | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [rol, setRol] = useState<string | null>(null)
+  const [empresa, setEmpresa] = useState<EmpresaDocumento | null>(null)
   const [modalExportarAbierto, setModalExportarAbierto] = useState(false)
   const puedeExportar = useExportPermission(rol)
 
@@ -400,6 +383,12 @@ export default function ExpedienteDetallePage() {
     axios.get(`${API}/auth/me`, { withCredentials: true })
       .then(res => setRol(res.data.rol))
       .catch(() => setRol(null))
+  }, [])
+
+  useEffect(() => {
+    axios.get<EmpresaDocumento>(`${API}/empresa`, { withCredentials: true })
+      .then(res => setEmpresa(res.data))
+      .catch(() => setEmpresa(null))
   }, [])
 
   if (error) return (
@@ -478,6 +467,7 @@ export default function ExpedienteDetallePage() {
       <ExportarExpedienteModal
         abierto={modalExportarAbierto}
         expediente={data}
+        empresa={empresa}
         onClose={() => setModalExportarAbierto(false)}
       />
 
