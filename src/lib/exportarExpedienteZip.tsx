@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { flushSync } from 'react-dom'
 import JSZip from 'jszip'
 import { construirXlsxArrayBuffer } from '@/lib/exportar'
 import { generarPdfBlob } from '@/lib/pdf'
@@ -15,8 +16,11 @@ export type { EmpresaDocumento }
 
 // ── Render de PDF fuera de pantalla ───────────────────────────────────────────
 
+const espera = (ms: number) => new Promise<void>(res => setTimeout(res, ms))
+
 async function esperarRecursos(root: HTMLElement) {
-  try { await document.fonts.ready } catch { /* noop */ }
+  // Un fallo de carga de fuentes no debe colgar la exportación.
+  await Promise.race([document.fonts.ready.catch(() => {}), espera(3000)])
   const imgs = Array.from(root.querySelectorAll('img'))
   await Promise.all(imgs.map(img =>
     img.complete
@@ -25,8 +29,15 @@ async function esperarRecursos(root: HTMLElement) {
   ))
 }
 
-function siguienteFrame(): Promise<void> {
-  return new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => res())))
+/** Espera a que `selector` exista dentro de `root` (el commit de React puede no ser síncrono). */
+async function esperarElemento(root: HTMLElement, selector: string, timeoutMs: number): Promise<HTMLElement | null> {
+  const limite = Date.now() + timeoutMs
+  let el = root.querySelector(selector) as HTMLElement | null
+  while (!el && Date.now() < limite) {
+    await espera(30)
+    el = root.querySelector(selector) as HTMLElement | null
+  }
+  return el
 }
 
 async function generarPdf(nodo: React.ReactElement, filename: string): Promise<Blob> {
@@ -35,11 +46,11 @@ async function generarPdf(nodo: React.ReactElement, filename: string): Promise<B
   document.body.appendChild(host)
   const root = createRoot(host)
   try {
-    root.render(nodo)
-    await siguienteFrame()
-    await esperarRecursos(host)
-    const el = host.querySelector('.documento-imprimible') as HTMLElement | null
+    // flushSync fuerza el commit síncrono del primer render sobre el root recién creado.
+    flushSync(() => root.render(nodo))
+    const el = (await esperarElemento(host, '.documento-imprimible', 2000))
     if (!el) throw new Error('No se pudo renderizar el documento para el PDF')
+    await esperarRecursos(host)
     return await generarPdfBlob(el, { filename })
   } finally {
     root.unmount()
@@ -139,43 +150,43 @@ export async function exportarExpedienteZip(
     (seleccion.consultas ? exp.consultas.length + consultasConReceta.length : 0) +
     (seleccion.recetas && !seleccion.consultas ? consultasConReceta.length : 0)
   let hechos = 0
-  const avanzar = () => { hechos += 1; onProgreso?.(hechos, totalPdf) }
+  const errores: string[] = []
+
+  // Genera un PDF y lo agrega a la carpeta. Un fallo puntual no aborta el ZIP:
+  // se anota en `_errores.txt` y se continúa con el resto.
+  const agregarPdf = async (carpeta: JSZip, nombre: string, nodo: React.ReactElement) => {
+    try {
+      carpeta.file(nombre, await generarPdf(nodo, nombre))
+    } catch (e) {
+      errores.push(`${nombre}: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      hechos += 1
+      onProgreso?.(hechos, totalPdf)
+    }
+  }
 
   if (seleccion.consultas) {
     const carpeta = zip.folder('Consultas')!
     for (const c of exp.consultas) {
       const nombreConsulta = `${folioConsulta(exp, c)}.pdf`
-      const pdfConsulta = await generarPdf(
-        <DocumentoConsulta consulta={consultaParaDocumento(exp, c)} empresa={empresa} />,
-        nombreConsulta,
-      )
+      const destino = c.receta ? carpeta.folder(folioConsulta(exp, c))! : carpeta
+      await agregarPdf(destino, nombreConsulta,
+        <DocumentoConsulta consulta={consultaParaDocumento(exp, c)} empresa={empresa} />)
       if (c.receta) {
-        const sub = carpeta.folder(folioConsulta(exp, c))!
-        sub.file(nombreConsulta, pdfConsulta)
-        avanzar()
-        const nombreReceta = `${folioReceta(exp, c)}.pdf`
-        const pdfReceta = await generarPdf(
-          <DocumentoReceta receta={recetaParaDocumento(exp, c)} empresa={empresa} />,
-          nombreReceta,
-        )
-        sub.file(nombreReceta, pdfReceta)
-        avanzar()
-      } else {
-        carpeta.file(nombreConsulta, pdfConsulta)
-        avanzar()
+        await agregarPdf(destino, `${folioReceta(exp, c)}.pdf`,
+          <DocumentoReceta receta={recetaParaDocumento(exp, c)} empresa={empresa} />)
       }
     }
   } else if (seleccion.recetas) {
     const carpeta = zip.folder('Recetas')!
     for (const c of consultasConReceta) {
-      const nombreReceta = `${folioReceta(exp, c)}.pdf`
-      const pdfReceta = await generarPdf(
-        <DocumentoReceta receta={recetaParaDocumento(exp, c)} empresa={empresa} />,
-        nombreReceta,
-      )
-      carpeta.file(nombreReceta, pdfReceta)
-      avanzar()
+      await agregarPdf(carpeta, `${folioReceta(exp, c)}.pdf`,
+        <DocumentoReceta receta={recetaParaDocumento(exp, c)} empresa={empresa} />)
     }
+  }
+
+  if (errores.length > 0) {
+    zip.file('_errores.txt', `No se pudieron generar ${errores.length} documento(s):\n\n${errores.join('\n')}\n`)
   }
 
   // 3. Empaquetar y descargar
