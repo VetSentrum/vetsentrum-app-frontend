@@ -20,6 +20,14 @@ interface CitaHoy {
   mascota: { nombre: string; expediente: number; especie?: { nombre: string } | null }
 }
 
+interface Novedad {
+  id: string
+  titulo: string
+  contenido: string
+  destacada: boolean
+  fecha: string
+}
+
 interface EntradaEspera {
   id: string
   tipo: 'cita' | 'walk_in'
@@ -55,6 +63,8 @@ export default function DashboardPage() {
   const [espera, setEspera] = useState<EntradaEspera[]>([])
   const [loading, setLoading] = useState(true)
   const [checkinActivo, setCheckinActivo] = useState(false)
+  const [novedadesActivo, setNovedadesActivo] = useState(false)
+  const [novedades, setNovedades] = useState<Novedad[]>([])
   const router = useRouter()
 
   const cargarDatos = useCallback(async (moduloCheckin: boolean) => {
@@ -78,6 +88,13 @@ export default function DashboardPage() {
         setRol(authRes.data.rol)
         const checkin = modulosRes.data.config?.checkin ?? false
         setCheckinActivo(checkin)
+        const nov = modulosRes.data.config?.novedades ?? false
+        setNovedadesActivo(nov)
+        if (nov) {
+          axios.get<Novedad[]>(`${API}/novedades`, { withCredentials: true })
+            .then((res) => setNovedades(res.data))
+            .catch(() => setNovedades([]))
+        }
         setLoading(false)
       })
       .catch(() => router.push('/login'))
@@ -111,6 +128,9 @@ export default function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+
+      {/* ── Novedades (solo si el módulo está activo) ─────────────────────── */}
+      {novedadesActivo && <NovedadesSection novedades={novedades} />}
 
       {/* ── Citas de hoy (solo si check-in activo) ────────────────────────── */}
       {checkinActivo && <section>
@@ -201,6 +221,48 @@ export default function DashboardPage() {
         </>
       )}
     </div>
+  )
+}
+
+// ── Sección de novedades ─────────────────────────────────────────────────────
+
+function NovedadesSection({ novedades }: { novedades: Novedad[] }) {
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Novedades
+        </h2>
+        <span className="text-xs text-gray-400">{novedades.length}</span>
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        {novedades.length === 0 ? (
+          <p className="p-6 text-center text-gray-400 text-sm">Sin novedades por ahora</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {novedades.map((n) => {
+              const fecha = new Date(n.fecha).toLocaleDateString('es-MX', {
+                day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC',
+              })
+              return (
+                <li key={n.id} className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    {n.destacada && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700">
+                        Destacada
+                      </span>
+                    )}
+                    <span className="font-semibold text-gray-900">{n.titulo}</span>
+                    <span className="ml-auto text-xs text-gray-400 whitespace-nowrap">{fecha}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 whitespace-pre-line">{n.contenido}</p>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
   )
 }
 
