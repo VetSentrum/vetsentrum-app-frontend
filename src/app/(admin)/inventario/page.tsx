@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
+import { fechaHoraClinica } from '@/lib/fechas'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -68,10 +69,11 @@ interface Movimiento {
   lote?: { codigo_lote: string | null; caducidad: string | null } | null
 }
 
+// Las caducidades/columnas @db.Date no llevan zona → UTC. Los timestamps con hora
+// (kardex) sí son instantes reales → hora de la clínica (fechaHoraClinica).
 const fechaCorta = (f?: string | null) =>
   f ? new Date(f).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : '—'
-const fechaHora = (f: string) =>
-  new Date(f).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' })
+const fechaHora = fechaHoraClinica
 
 const ESTADO_PEDIDO: Record<string, { label: string; cls: string }> = {
   borrador: { label: 'Borrador', cls: 'bg-gray-100 text-gray-600' },

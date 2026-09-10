@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { fechaClinica as fecha, fechaHoraClinica as fechaHora, hoyISOClinica as hoyISO } from '@/lib/fechas'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -33,12 +34,10 @@ interface Cotizacion {
 interface Corte {
   fecha: string; efectivo: number; tarjeta: number; transferencia: number; total: number; cantidad: number
   ventas: (Venta & { cliente: { nombre_completo: string } | null })[]
+  canceladas: (Venta & { cliente: { nombre_completo: string } | null })[]
 }
 
 const money = (n: number) => `$${n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const fecha = (f: string) => new Date(f).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
-const fechaHora = (f: string) => new Date(f).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' })
-const hoyISO = () => new Date().toISOString().slice(0, 10)
 
 export default function VentasPage() {
   const router = useRouter()
@@ -612,7 +611,7 @@ function CorteTab() {
               <p className="text-xl font-bold">{money(corte.total)}</p>
             </div>
           </div>
-          <div className="border rounded shadow overflow-auto max-h-[50vh]">
+          <div className="border rounded shadow overflow-auto max-h-[45vh]">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100 sticky top-0"><tr className="text-left">
                 <th className="p-2">Folio</th><th className="p-2">Hora</th><th className="p-2">Cliente</th>
@@ -632,6 +631,28 @@ function CorteTab() {
               </tbody>
             </table>
           </div>
+
+          {corte.canceladas.length > 0 && (
+            <div className="mt-4 border border-red-200 rounded-xl bg-red-50/50 p-4">
+              <p className="text-sm font-semibold text-red-700 mb-2">
+                Ventas canceladas del día ({corte.canceladas.length}) — no cuentan en el corte
+              </p>
+              <table className="min-w-full text-sm">
+                <tbody className="divide-y divide-red-100">
+                  {corte.canceladas.map((v) => (
+                    <tr key={v.id}>
+                      <td className="py-1 pr-2 font-mono">#{v.folio}</td>
+                      <td className="py-1 pr-2 text-gray-500">{fechaHora(v.fecha)}</td>
+                      <td className="py-1 pr-2">{v.cliente?.nombre_completo ?? 'Público en general'}</td>
+                      <td className="py-1 pr-2 text-gray-600">{METODO_LABEL[v.metodo_pago]}</td>
+                      <td className="py-1 pr-2 text-right line-through text-gray-500">{money(v.total)}</td>
+                      <td className="py-1 text-xs text-red-600">{v.motivo_cancelacion}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
     </div>

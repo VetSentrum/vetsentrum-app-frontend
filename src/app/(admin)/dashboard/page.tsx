@@ -156,8 +156,10 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {citas.map((c) => {
+                  // Las citas guardan la hora de pared como si fuera UTC (ver parseFechaLocal
+                  // en el backend), por eso se muestran con timeZone UTC, no la de la clínica.
                   const hora = new Date(c.fecha_hora).toLocaleTimeString('es-MX', {
-                    hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Monterrey',
+                    hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC',
                   })
                   const badge = ESTADO_CITA_BADGE[c.estado] ?? ESTADO_CITA_BADGE.pendiente
                   const icono = ICONOS[c.mascota.especie?.nombre ?? ''] ?? '🐾'
