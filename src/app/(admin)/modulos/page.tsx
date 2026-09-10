@@ -17,16 +17,22 @@ interface ModulosResponse {
   config: Record<string, boolean>
 }
 
+const SUPERUSUARIO_EMAIL = 'carlos-al.ma@hotmail.com'
+
 export default function ModulosPage() {
   const [modulos, setModulos] = useState<ModuloInfo[]>([])
   const [config, setConfig] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+  const [autorizado, setAutorizado] = useState(false)
   const [updating, setUpdating] = useState<string | null>(null)
 
   useEffect(() => {
-    axios
-      .get<ModulosResponse>(`${API}/empresa/modulos`, { withCredentials: true })
-      .then((res) => {
+    Promise.all([
+      axios.get<{ email: string }>(`${API}/auth/me`, { withCredentials: true }),
+      axios.get<ModulosResponse>(`${API}/empresa/modulos`, { withCredentials: true }),
+    ])
+      .then(([me, res]) => {
+        setAutorizado(me.data.email === SUPERUSUARIO_EMAIL)
         setModulos(res.data.disponibles)
         setConfig(res.data.config)
       })
@@ -52,6 +58,13 @@ export default function ModulosPage() {
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Cargando...</p>
+
+  if (!autorizado) return (
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-2">Módulos</h1>
+      <p className="text-sm text-gray-500">No tienes permiso para configurar los módulos del sistema.</p>
+    </div>
+  )
 
   return (
     <div className="max-w-2xl mx-auto">
