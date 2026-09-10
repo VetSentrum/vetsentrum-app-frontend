@@ -27,6 +27,7 @@ interface Producto {
   precio_base: number | null
   precio_actual: number | null
   stock_minimo: number
+  stock_seguridad: number
   prioritario: boolean
   activo: boolean
   stock: number
@@ -102,10 +103,12 @@ export default function InventarioPage() {
       <Tabs defaultValue="catalogo">
         <TabsList>
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="reposicion">Reposición</TabsTrigger>
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
         </TabsList>
         <TabsContent value="catalogo"><CatalogoTab /></TabsContent>
+        <TabsContent value="reposicion"><ReposicionTab /></TabsContent>
         <TabsContent value="pedidos"><PedidosTab /></TabsContent>
         <TabsContent value="proveedores"><ProveedoresTab /></TabsContent>
       </Tabs>
@@ -123,6 +126,14 @@ function CatalogoTab() {
   const [editar, setEditar] = useState<Producto | null | 'nuevo'>(null)
   const [movProducto, setMovProducto] = useState<Producto | null>(null)
   const [kardexProducto, setKardexProducto] = useState<Producto | null>(null)
+  const [enReposicion, setEnReposicion] = useState<Set<string>>(new Set())
+
+  const agregarAReposicion = async (id: string) => {
+    try {
+      await axios.post(`${API}/inventario/reposicion`, { producto_id: id }, { withCredentials: true })
+      setEnReposicion((s) => new Set(s).add(id))
+    } catch { /* noop */ }
+  }
 
   const cargar = useCallback(() => {
     const params = new URLSearchParams()
@@ -192,10 +203,17 @@ function CatalogoTab() {
                   {fechaCorta(p.proxima_caducidad)}
                 </td>
                 <td className="p-2">
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => setMovProducto(p)}>Movimiento</Button>
                     <Button size="sm" variant="outline" onClick={() => setKardexProducto(p)}>Kardex</Button>
                     <Button size="sm" variant="outline" onClick={() => setEditar(p)}>Editar</Button>
+                    <Button
+                      size="sm" variant="outline"
+                      disabled={enReposicion.has(p.id)}
+                      onClick={() => agregarAReposicion(p.id)}
+                    >
+                      {enReposicion.has(p.id) ? 'En reposición ✓' : '+ Reposición'}
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -239,6 +257,7 @@ function ProductoDialog({ producto, onClose, onGuardado }: {
     precio_base: producto?.precio_base?.toString() ?? '',
     precio_actual: producto?.precio_actual?.toString() ?? '',
     stock_minimo: (producto?.stock_minimo ?? 0).toString(),
+    stock_seguridad: (producto?.stock_seguridad ?? 0).toString(),
     prioritario: producto?.prioritario ?? false,
     activo: producto?.activo ?? true,
   })
@@ -255,6 +274,7 @@ function ProductoDialog({ producto, onClose, onGuardado }: {
       precio_base: f.precio_base ? Number(f.precio_base) : null,
       precio_actual: f.precio_actual ? Number(f.precio_actual) : null,
       stock_minimo: Number(f.stock_minimo) || 0,
+      stock_seguridad: Number(f.stock_seguridad) || 0,
       prioritario: f.prioritario,
       activo: f.activo,
     }
@@ -290,15 +310,20 @@ function ProductoDialog({ producto, onClose, onGuardado }: {
               </select>
             </Campo>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Campo label="Unidad">
               <Input value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })} />
             </Campo>
-            <Campo label="Stock mínimo">
-              <Input type="number" value={f.stock_minimo} onChange={(e) => setF({ ...f, stock_minimo: e.target.value })} />
-            </Campo>
             <Campo label="Precio venta">
               <Input type="number" value={f.precio_actual} onChange={(e) => setF({ ...f, precio_actual: e.target.value })} />
+            </Campo>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Stock mínimo (alerta)">
+              <Input type="number" value={f.stock_minimo} onChange={(e) => setF({ ...f, stock_minimo: e.target.value })} />
+            </Campo>
+            <Campo label="Stock de seguridad (reposición)">
+              <Input type="number" value={f.stock_seguridad} onChange={(e) => setF({ ...f, stock_seguridad: e.target.value })} />
             </Campo>
           </div>
           <div className="flex gap-6">
@@ -436,6 +461,7 @@ function KardexDialog({ producto, onClose }: { producto: Producto; onClose: () =
 function ProveedoresTab() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [editar, setEditar] = useState<Proveedor | null | 'nuevo'>(null)
+  const [verPedidos, setVerPedidos] = useState<Proveedor | null>(null)
 
   const cargar = useCallback(() => {
     axios.get<Proveedor[]>(`${API}/inventario/proveedores`, { withCredentials: true })
@@ -461,7 +487,12 @@ function ProveedoresTab() {
                 <td className="p-2 text-gray-600">{p.contacto ?? '—'}</td>
                 <td className="p-2 text-gray-600">{p.telefono ?? '—'}</td>
                 <td className="p-2 text-gray-600">{p.email ?? '—'}</td>
-                <td className="p-2"><Button size="sm" variant="outline" onClick={() => setEditar(p)}>Editar</Button></td>
+                <td className="p-2">
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => setVerPedidos(p)}>Ver pedidos</Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditar(p)}>Editar</Button>
+                  </div>
+                </td>
               </tr>
             ))}
             {proveedores.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-gray-400">Sin proveedores</td></tr>}
@@ -475,7 +506,52 @@ function ProveedoresTab() {
           onGuardado={() => { setEditar(null); cargar() }}
         />
       )}
+      {verPedidos && <ProveedorPedidosDialog proveedor={verPedidos} onClose={() => setVerPedidos(null)} />}
     </div>
+  )
+}
+
+function ProveedorPedidosDialog({ proveedor, onClose }: { proveedor: Proveedor; onClose: () => void }) {
+  const [pedidos, setPedidos] = useState<Pedido[] | null>(null)
+  useEffect(() => {
+    axios.get<Pedido[]>(`${API}/inventario/proveedores/${proveedor.id}/pedidos`, { withCredentials: true })
+      .then((r) => setPedidos(r.data)).catch(() => setPedidos([]))
+  }, [proveedor.id])
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Pedidos — {proveedor.nombre}</DialogTitle>
+          <DialogDescription>Pedidos registrados a este proveedor.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-auto">
+          {!pedidos ? <p className="text-sm text-gray-400 p-4">Cargando…</p> : pedidos.length === 0 ? (
+            <p className="text-sm text-gray-400 p-4">Sin pedidos</p>
+          ) : (
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50"><tr className="text-left">
+                <th className="p-2">Folio</th><th className="p-2">Fecha</th><th className="p-2">Estado</th><th className="p-2">Recibido</th>
+              </tr></thead>
+              <tbody className="divide-y">
+                {pedidos.map((p) => {
+                  const est = ESTADO_PEDIDO[p.estado] ?? { label: p.estado, cls: 'bg-gray-100 text-gray-600' }
+                  const ped = p.renglones.reduce((s, r) => s + r.cantidad_pedida, 0)
+                  const rec = p.renglones.reduce((s, r) => s + r.cantidad_recibida, 0)
+                  return (
+                    <tr key={p.id}>
+                      <td className="p-2 font-mono">#{p.folio}</td>
+                      <td className="p-2 text-gray-500">{fechaCorta(p.creado_en)}</td>
+                      <td className="p-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${est.cls}`}>{est.label}</span></td>
+                      <td className="p-2 text-gray-600">{rec} / {ped}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -528,6 +604,170 @@ function ProveedorDialog({ proveedor, onClose, onGuardado }: {
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={guardar} disabled={guardando || !f.nombre.trim()}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Reposición ───────────────────────────────────────────────────────────────
+
+interface ReposicionItem {
+  id: string
+  cantidad: number
+  nota: string | null
+  producto: { id: string; nombre: string; unidad: string; stock_minimo: number; stock_seguridad: number; stock: number }
+}
+
+function ReposicionTab() {
+  const [items, setItems] = useState<ReposicionItem[]>([])
+  const [proc, setProc] = useState(false)
+  const [crearPedido, setCrearPedido] = useState(false)
+
+  const cargar = useCallback(() => {
+    axios.get<ReposicionItem[]>(`${API}/inventario/reposicion`, { withCredentials: true })
+      .then((r) => setItems(r.data)).catch(() => setItems([]))
+  }, [])
+  useEffect(() => { cargar() }, [cargar])
+
+  const recalcular = async () => {
+    setProc(true)
+    try {
+      const r = await axios.post<ReposicionItem[]>(`${API}/inventario/reposicion/recalcular`, {}, { withCredentials: true })
+      setItems(r.data)
+    } catch { /* noop */ } finally { setProc(false) }
+  }
+
+  const setCantidad = async (id: string, cantidad: number) => {
+    setItems((its) => its.map((i) => (i.id === id ? { ...i, cantidad } : i)))
+    await axios.patch(`${API}/inventario/reposicion/${id}`, { cantidad }, { withCredentials: true }).catch(() => {})
+  }
+  const quitar = async (id: string) => {
+    await axios.delete(`${API}/inventario/reposicion/${id}`, { withCredentials: true }).catch(() => {})
+    cargar()
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3 my-4">
+        <p className="text-sm text-gray-500">
+          Productos por reponer. Cantidad sugerida = stock de seguridad − stock actual.
+        </p>
+        <Button variant="outline" onClick={recalcular} disabled={proc} className="ml-auto">
+          {proc ? 'Recalculando…' : 'Recalcular'}
+        </Button>
+        <Button onClick={() => setCrearPedido(true)} disabled={items.length === 0}>Crear pedido</Button>
+      </div>
+      <div className="border rounded shadow overflow-auto max-h-[60vh]">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-100 sticky top-0"><tr className="text-left">
+            <th className="p-2">Producto</th><th className="p-2 text-right">Stock</th>
+            <th className="p-2 text-right">Mínimo</th><th className="p-2 text-right">Seguridad</th>
+            <th className="p-2 text-right">A pedir</th><th className="p-2"></th>
+          </tr></thead>
+          <tbody className="divide-y">
+            {items.map((i) => (
+              <tr key={i.id}>
+                <td className="p-2 font-medium">{i.producto.nombre}</td>
+                <td className="p-2 text-right">{i.producto.stock} {i.producto.unidad}</td>
+                <td className="p-2 text-right text-gray-500">{i.producto.stock_minimo}</td>
+                <td className="p-2 text-right text-gray-500">{i.producto.stock_seguridad}</td>
+                <td className="p-2 text-right">
+                  <Input
+                    type="number"
+                    value={i.cantidad}
+                    onChange={(e) => setCantidad(i.id, Number(e.target.value))}
+                    className="w-24 ml-auto"
+                  />
+                </td>
+                <td className="p-2"><Button size="sm" variant="outline" onClick={() => quitar(i.id)}>Quitar</Button></td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr><td colSpan={6} className="p-6 text-center text-gray-400">Lista vacía. Usa &quot;Recalcular&quot; o &quot;+ Reposición&quot; desde el catálogo.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {crearPedido && (
+        <CrearPedidoReposicionDialog
+          items={items}
+          onClose={() => setCrearPedido(false)}
+          onCreado={() => { setCrearPedido(false); cargar() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function CrearPedidoReposicionDialog({ items, onClose, onCreado }: {
+  items: ReposicionItem[]; onClose: () => void; onCreado: () => void
+}) {
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+  const [proveedorId, setProveedorId] = useState('')
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set(items.map((i) => i.id)))
+  const [notas, setNotas] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [proc, setProc] = useState(false)
+
+  useEffect(() => {
+    axios.get<Proveedor[]>(`${API}/inventario/proveedores`, { withCredentials: true })
+      .then((r) => setProveedores(r.data)).catch(() => {})
+  }, [])
+
+  const toggle = (id: string) => setSeleccion((s) => {
+    const n = new Set(s)
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
+    return n
+  })
+
+  const crear = async () => {
+    if (!proveedorId || seleccion.size === 0) { setError('Elige proveedor y al menos un producto'); return }
+    setProc(true); setError(null)
+    try {
+      await axios.post(`${API}/inventario/reposicion/crear-pedido`, {
+        proveedor_id: proveedorId,
+        item_ids: [...seleccion],
+        notas: notas.trim() || undefined,
+      }, { withCredentials: true })
+      onCreado()
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      setError(err.response?.data?.message ?? 'No se pudo crear el pedido')
+    } finally { setProc(false) }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Crear pedido desde reposición</DialogTitle>
+          <DialogDescription>Los productos elegidos salen de la lista al crear el pedido.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2 max-h-[60vh] overflow-auto">
+          <Campo label="Proveedor">
+            <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="border rounded px-2 py-2 text-sm w-full">
+              <option value="">Selecciona…</option>
+              {proveedores.filter((p) => p.activo).map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+          </Campo>
+          <div>
+            <p className="text-sm font-medium mb-1">Productos</p>
+            {items.map((i) => (
+              <label key={i.id} className="flex items-center gap-2 text-sm py-1">
+                <Checkbox checked={seleccion.has(i.id)} onCheckedChange={() => toggle(i.id)} />
+                <span className="flex-1">{i.producto.nombre}</span>
+                <span className="text-gray-500">{i.cantidad} {i.producto.unidad}</span>
+              </label>
+            ))}
+          </div>
+          <Campo label="Notas"><Input value={notas} onChange={(e) => setNotas(e.target.value)} /></Campo>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={crear} disabled={proc}>{proc ? 'Creando…' : 'Crear pedido'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
