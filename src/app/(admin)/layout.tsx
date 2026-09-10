@@ -44,6 +44,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     }
   } catch {}
 
+  let modulos: Record<string, boolean> = {}
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/empresa/modulos`, { cache: 'no-store' })
+    if (res.ok) modulos = (await res.json())?.config ?? {}
+  } catch {}
+
   return (
     <div className="flex h-screen">
       {/* Barra lateral */}
@@ -80,6 +86,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {/* Visible para admin, recepcion y veterinario */}
           {(user.rol === "admin" || user.rol === "recepcion" || user.rol === "veterinario") && (
             <a href="/citas" className="p-3 rounded-lg hover:bg-gray-800">Citas</a>
+          )}
+
+          {/* Inventario — módulo activable, solo admin y recepción */}
+          {modulos.inventario && (user.rol === "admin" || user.rol === "recepcion") && (
+            <a href="/inventario" className="p-3 rounded-lg hover:bg-gray-800">Inventario</a>
           )}
 
           {/* Visible para admin y veterinario */}
