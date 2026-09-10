@@ -24,6 +24,7 @@ interface Producto {
   codigo_barras: string | null
   tipo: TipoProducto
   unidad: string
+  unidad_venta: string | null
   precio_base: number | null
   precio_actual: number | null
   stock_minimo: number
@@ -34,6 +35,12 @@ interface Producto {
   proxima_caducidad: string | null
   alerta_stock: boolean
   alerta_caducidad: boolean
+  recomendacion: number
+}
+interface Lote {
+  id: string; codigo_lote: string | null; caducidad: string | null
+  cantidad_actual: number; cantidad_inicial: number; costo_unitario: number | null
+  proveedor?: { nombre: string } | null
 }
 interface Proveedor {
   id: string; nombre: string; contacto: string | null; telefono: string | null
@@ -57,7 +64,8 @@ interface PedidoDetalle {
 }
 interface Movimiento {
   id: string; tipo: string; cantidad: number; motivo: string | null; referencia: string | null
-  fecha: string; lote?: { codigo_lote: string | null; caducidad: string | null } | null
+  fecha: string; usuario_nombre: string | null
+  lote?: { codigo_lote: string | null; caducidad: string | null } | null
 }
 
 const fechaCorta = (f?: string | null) =>
@@ -76,6 +84,7 @@ const ESTADO_PEDIDO: Record<string, { label: string; cls: string }> = {
 export default function InventarioPage() {
   const router = useRouter()
   const [autorizado, setAutorizado] = useState<boolean | null>(null)
+  const [rol, setRol] = useState<string>('')
 
   useEffect(() => {
     Promise.all([
@@ -83,6 +92,7 @@ export default function InventarioPage() {
       axios.get<{ config: Record<string, boolean> }>(`${API}/empresa/modulos`),
     ])
       .then(([me, mod]) => {
+        setRol(me.data.rol)
         const rolOk = me.data.rol === 'admin' || me.data.rol === 'recepcion'
         setAutorizado(rolOk && (mod.data.config?.inventario ?? false))
       })
@@ -107,7 +117,7 @@ export default function InventarioPage() {
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
         </TabsList>
-        <TabsContent value="catalogo"><CatalogoTab /></TabsContent>
+        <TabsContent value="catalogo"><CatalogoTab esAdmin={rol === 'admin'} /></TabsContent>
         <TabsContent value="reposicion"><ReposicionTab /></TabsContent>
         <TabsContent value="pedidos"><PedidosTab /></TabsContent>
         <TabsContent value="proveedores"><ProveedoresTab /></TabsContent>
@@ -118,7 +128,7 @@ export default function InventarioPage() {
 
 // ── Catálogo ─────────────────────────────────────────────────────────────────
 
-function CatalogoTab() {
+function CatalogoTab({ esAdmin }: { esAdmin: boolean }) {
   const [productos, setProductos] = useState<Producto[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [tipo, setTipo] = useState('')
@@ -126,6 +136,7 @@ function CatalogoTab() {
   const [editar, setEditar] = useState<Producto | null | 'nuevo'>(null)
   const [movProducto, setMovProducto] = useState<Producto | null>(null)
   const [kardexProducto, setKardexProducto] = useState<Producto | null>(null)
+  const [lotesProducto, setLotesProducto] = useState<Producto | null>(null)
   const [enReposicion, setEnReposicion] = useState<Set<string>>(new Set())
 
   const agregarAReposicion = async (id: string) => {
@@ -179,13 +190,15 @@ function CatalogoTab() {
               <th className="p-2">Tipo</th>
               <th className="p-2 text-right">Stock</th>
               <th className="p-2 text-right">Mínimo</th>
+              <th className="p-2 text-right">Seguridad</th>
+              <th className="p-2 text-right">Recomendación</th>
               <th className="p-2">Próx. caducidad</th>
               <th className="p-2">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {productos.map((p) => (
-              <tr key={p.id} className={p.alerta_stock ? 'bg-red-50' : ''}>
+              <tr key={p.id} className={p.alerta_caducidad ? 'bg-orange-50' : p.alerta_stock ? 'bg-red-50' : ''}>
                 <td className="p-2">
                   <div className="font-medium text-gray-900">
                     {p.prioritario && <span className="text-amber-500" title="Prioritario">★ </span>}
@@ -199,13 +212,29 @@ function CatalogoTab() {
                   {p.stock} {p.unidad}
                 </td>
                 <td className="p-2 text-right text-gray-500">{p.stock_minimo}</td>
-                <td className={`p-2 ${p.alerta_caducidad ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                  {fechaCorta(p.proxima_caducidad)}
+                <td className="p-2 text-right text-gray-500">{p.stock_seguridad}</td>
+                <td className={`p-2 text-right ${p.recomendacion > 0 ? 'font-medium text-indigo-600' : 'text-gray-400'}`}>
+                  {p.recomendacion > 0 ? `+${p.recomendacion}` : '—'}
+                </td>
+                <td className="p-2">
+                  {p.proxima_caducidad ? (
+                    p.alerta_caducidad ? (
+                      <button
+                        onClick={() => setLotesProducto(p)}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 hover:bg-orange-200"
+                      >
+                        vence {fechaCorta(p.proxima_caducidad)}
+                      </button>
+                    ) : <span className="text-gray-500 text-xs">{fechaCorta(p.proxima_caducidad)}</span>
+                  ) : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="p-2">
                   <div className="flex gap-1 flex-wrap">
-                    <Button size="sm" variant="outline" onClick={() => setMovProducto(p)}>Movimiento</Button>
+                    {esAdmin && (
+                      <Button size="sm" variant="outline" onClick={() => setMovProducto(p)}>Movimiento</Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setKardexProducto(p)}>Kardex</Button>
+                    <Button size="sm" variant="outline" onClick={() => setLotesProducto(p)}>Lotes</Button>
                     <Button size="sm" variant="outline" onClick={() => setEditar(p)}>Editar</Button>
                     <Button
                       size="sm" variant="outline"
@@ -219,7 +248,7 @@ function CatalogoTab() {
               </tr>
             ))}
             {productos.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-gray-400">Sin productos</td></tr>
+              <tr><td colSpan={8} className="p-6 text-center text-gray-400">Sin productos</td></tr>
             )}
           </tbody>
         </table>
@@ -242,7 +271,57 @@ function CatalogoTab() {
       {kardexProducto && (
         <KardexDialog producto={kardexProducto} onClose={() => setKardexProducto(null)} />
       )}
+      {lotesProducto && (
+        <LotesDialog producto={lotesProducto} onClose={() => setLotesProducto(null)} />
+      )}
     </div>
+  )
+}
+
+function LotesDialog({ producto, onClose }: { producto: Producto; onClose: () => void }) {
+  const [lotes, setLotes] = useState<Lote[] | null>(null)
+  useEffect(() => {
+    axios.get<Lote[]>(`${API}/inventario/productos/${producto.id}/lotes`, { withCredentials: true })
+      .then((r) => setLotes(r.data)).catch(() => setLotes([]))
+  }, [producto.id])
+  const limite = new Date(); limite.setMonth(limite.getMonth() + 3)
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Lotes — {producto.nombre}</DialogTitle>
+          <DialogDescription>Existencia por lote. En rojo, caducados o que vencen en menos de 3 meses.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-auto">
+          {!lotes ? <p className="text-sm text-gray-400 p-4">Cargando…</p> : lotes.length === 0 ? (
+            <p className="text-sm text-gray-400 p-4">Sin lotes</p>
+          ) : (
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 sticky top-0"><tr className="text-left">
+                <th className="p-2">Lote</th><th className="p-2">Caducidad</th><th className="p-2">Proveedor</th>
+                <th className="p-2 text-right">Actual</th><th className="p-2 text-right">Inicial</th><th className="p-2 text-right">Costo u.</th>
+              </tr></thead>
+              <tbody className="divide-y">
+                {lotes.map((l) => {
+                  const vence = l.caducidad ? new Date(l.caducidad) : null
+                  const alerta = vence != null && vence <= limite
+                  return (
+                    <tr key={l.id} className={alerta ? 'bg-orange-50' : ''}>
+                      <td className="p-2 font-mono">{l.codigo_lote ?? '—'}</td>
+                      <td className={`p-2 ${alerta ? 'text-orange-700 font-medium' : 'text-gray-500'}`}>{fechaCorta(l.caducidad)}</td>
+                      <td className="p-2 text-gray-500">{l.proveedor?.nombre ?? '—'}</td>
+                      <td className="p-2 text-right font-medium">{l.cantidad_actual}</td>
+                      <td className="p-2 text-right text-gray-400">{l.cantidad_inicial}</td>
+                      <td className="p-2 text-right text-gray-500">{l.costo_unitario != null ? `$${l.costo_unitario}` : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -254,6 +333,7 @@ function ProductoDialog({ producto, onClose, onGuardado }: {
     codigo_barras: producto?.codigo_barras ?? '',
     tipo: (producto?.tipo ?? 'medicamento') as TipoProducto,
     unidad: producto?.unidad ?? 'pieza',
+    unidad_venta: producto?.unidad_venta ?? '',
     precio_base: producto?.precio_base?.toString() ?? '',
     precio_actual: producto?.precio_actual?.toString() ?? '',
     stock_minimo: (producto?.stock_minimo ?? 0).toString(),
@@ -271,6 +351,7 @@ function ProductoDialog({ producto, onClose, onGuardado }: {
       codigo_barras: f.codigo_barras.trim() || undefined,
       tipo: f.tipo,
       unidad: f.unidad.trim() || 'pieza',
+      unidad_venta: f.unidad_venta.trim() || null,
       precio_base: f.precio_base ? Number(f.precio_base) : null,
       precio_actual: f.precio_actual ? Number(f.precio_actual) : null,
       stock_minimo: Number(f.stock_minimo) || 0,
@@ -310,9 +391,12 @@ function ProductoDialog({ producto, onClose, onGuardado }: {
               </select>
             </Campo>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Campo label="Unidad">
+          <div className="grid grid-cols-3 gap-3">
+            <Campo label="Unidad de stock">
               <Input value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })} />
+            </Campo>
+            <Campo label="Unidad de venta">
+              <Input value={f.unidad_venta} placeholder="(igual que stock)" onChange={(e) => setF({ ...f, unidad_venta: e.target.value })} />
             </Campo>
             <Campo label="Precio venta">
               <Input type="number" value={f.precio_actual} onChange={(e) => setF({ ...f, precio_actual: e.target.value })} />
@@ -431,7 +515,7 @@ function KardexDialog({ producto, onClose }: { producto: Producto; onClose: () =
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 sticky top-0"><tr className="text-left">
                 <th className="p-2">Fecha</th><th className="p-2">Tipo</th><th className="p-2 text-right">Cant.</th>
-                <th className="p-2">Lote</th><th className="p-2">Motivo</th>
+                <th className="p-2">Lote</th><th className="p-2">Motivo</th><th className="p-2">Usuario</th>
               </tr></thead>
               <tbody className="divide-y">
                 {movs.map((m) => (
@@ -445,6 +529,7 @@ function KardexDialog({ producto, onClose }: { producto: Producto; onClose: () =
                       {m.lote?.codigo_lote ?? '—'}{m.lote?.caducidad ? ` · vence ${fechaCorta(m.lote.caducidad)}` : ''}
                     </td>
                     <td className="p-2 text-gray-600">{m.motivo ?? m.referencia ?? '—'}</td>
+                    <td className="p-2 text-gray-500">{m.usuario_nombre ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -705,7 +790,7 @@ function CrearPedidoReposicionDialog({ items, onClose, onCreado }: {
 }) {
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [proveedorId, setProveedorId] = useState('')
-  const [seleccion, setSeleccion] = useState<Set<string>>(new Set(items.map((i) => i.id)))
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set(items.filter((i) => i.cantidad > 0).map((i) => i.id)))
   const [notas, setNotas] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [proc, setProc] = useState(false)
@@ -755,8 +840,8 @@ function CrearPedidoReposicionDialog({ items, onClose, onCreado }: {
           <div>
             <p className="text-sm font-medium mb-1">Productos</p>
             {items.map((i) => (
-              <label key={i.id} className="flex items-center gap-2 text-sm py-1">
-                <Checkbox checked={seleccion.has(i.id)} onCheckedChange={() => toggle(i.id)} />
+              <label key={i.id} className={`flex items-center gap-2 text-sm py-1 ${i.cantidad <= 0 ? 'opacity-40' : ''}`}>
+                <Checkbox checked={seleccion.has(i.id)} disabled={i.cantidad <= 0} onCheckedChange={() => toggle(i.id)} />
                 <span className="flex-1">{i.producto.nombre}</span>
                 <span className="text-gray-500">{i.cantidad} {i.producto.unidad}</span>
               </label>
@@ -796,7 +881,7 @@ function PedidosTab() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 sticky top-0"><tr className="text-left">
             <th className="p-2">Folio</th><th className="p-2">Proveedor</th><th className="p-2">Fecha</th>
-            <th className="p-2">Estado</th><th className="p-2">Recibido</th><th className="p-2"></th>
+            <th className="p-2">Estado</th><th className="p-2">Recibido</th><th className="p-2">Notas</th><th className="p-2"></th>
           </tr></thead>
           <tbody className="divide-y">
             {pedidos.map((p) => {
@@ -810,11 +895,12 @@ function PedidosTab() {
                   <td className="p-2 text-gray-500">{fechaCorta(p.creado_en)}</td>
                   <td className="p-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${est.cls}`}>{est.label}</span></td>
                   <td className="p-2 text-gray-600">{recibidoTot} / {pedidoTot}</td>
+                  <td className="p-2 text-red-600 text-xs max-w-[220px] truncate">{p.notas ?? ''}</td>
                   <td className="p-2"><Button size="sm" variant="outline" onClick={() => setVerId(p.id)}>Ver / recibir</Button></td>
                 </tr>
               )
             })}
-            {pedidos.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">Sin pedidos</td></tr>}
+            {pedidos.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-gray-400">Sin pedidos</td></tr>}
           </tbody>
         </table>
       </div>
@@ -902,9 +988,12 @@ function NuevoPedidoDialog({ onClose, onGuardado }: { onClose: () => void; onGua
   )
 }
 
+type LoteInput = { cantidad: string; lote: string; caducidad: string }
+const loteVacio = (): LoteInput => ({ cantidad: '', lote: '', caducidad: '' })
+
 function PedidoDetalleDialog({ id, onClose, onCambio }: { id: string; onClose: () => void; onCambio: () => void }) {
   const [pedido, setPedido] = useState<PedidoDetalle | null>(null)
-  const [recibir, setRecibir] = useState<Record<string, { cantidad: string; lote: string; caducidad: string }>>({})
+  const [recibir, setRecibir] = useState<Record<string, LoteInput[]>>({})
   const [error, setError] = useState<string | null>(null)
   const [proc, setProc] = useState(false)
 
@@ -915,15 +1004,32 @@ function PedidoDetalleDialog({ id, onClose, onCambio }: { id: string; onClose: (
 
   const cerrado = pedido?.estado === 'recibido' || pedido?.estado === 'cancelado'
 
+  const lotesDe = (rid: string) => recibir[rid] ?? [loteVacio()]
+  const setLote = (rid: string, i: number, patch: Partial<LoteInput>) =>
+    setRecibir((prev) => {
+      const arr = [...(prev[rid] ?? [loteVacio()])]
+      arr[i] = { ...arr[i], ...patch }
+      return { ...prev, [rid]: arr }
+    })
+  const addLote = (rid: string) =>
+    setRecibir((prev) => ({ ...prev, [rid]: [...(prev[rid] ?? [loteVacio()]), loteVacio()] }))
+  const rmLote = (rid: string, i: number) =>
+    setRecibir((prev) => ({ ...prev, [rid]: (prev[rid] ?? []).filter((_, j) => j !== i) }))
+
   const enviarRecepcion = async () => {
     if (!pedido) return
     setProc(true); setError(null)
-    const rs = Object.entries(recibir)
-      .filter(([, v]) => Number(v.cantidad) > 0)
-      .map(([renglon_id, v]) => ({ renglon_id, cantidad: Number(v.cantidad), codigo_lote: v.lote.trim() || undefined, caducidad: v.caducidad || undefined }))
-    if (rs.length === 0) { setError('Indica cantidades a recibir'); setProc(false); return }
+    const renglones = Object.entries(recibir)
+      .map(([renglon_id, lotes]) => ({
+        renglon_id,
+        lotes: lotes
+          .filter((l) => Number(l.cantidad) > 0)
+          .map((l) => ({ cantidad: Number(l.cantidad), codigo_lote: l.lote.trim() || undefined, caducidad: l.caducidad || undefined })),
+      }))
+      .filter((r) => r.lotes.length > 0)
+    if (renglones.length === 0) { setError('Indica cantidades a recibir'); setProc(false); return }
     try {
-      await axios.post(`${API}/inventario/pedidos/${id}/recibir`, { renglones: rs }, { withCredentials: true })
+      await axios.post(`${API}/inventario/pedidos/${id}/recibir`, { renglones }, { withCredentials: true })
       setRecibir({})
       cargar(); onCambio()
     } catch (e) {
@@ -962,22 +1068,36 @@ function PedidoDetalleDialog({ id, onClose, onCambio }: { id: string; onClose: (
               <tbody className="divide-y">
                 {pedido.renglones.map((r) => {
                   const pendiente = r.cantidad_pedida - r.cantidad_recibida
-                  const v = recibir[r.id] ?? { cantidad: '', lote: '', caducidad: '' }
+                  const lotes = lotesDe(r.id)
+                  const totalLotes = lotes.reduce((s, l) => s + (Number(l.cantidad) || 0), 0)
                   return (
                     <tr key={r.id}>
-                      <td className="p-2">{r.producto?.nombre ?? '—'}</td>
-                      <td className="p-2 text-right">{r.cantidad_pedida}</td>
-                      <td className="p-2 text-right">{r.cantidad_recibida}</td>
+                      <td className="p-2 align-top">{r.producto?.nombre ?? '—'}</td>
+                      <td className="p-2 text-right align-top">{r.cantidad_pedida}</td>
+                      <td className="p-2 text-right align-top">{r.cantidad_recibida}</td>
                       {!cerrado && (
                         <td className="p-2">
                           {pendiente > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              <Input type="number" placeholder={`≤ ${pendiente}`} value={v.cantidad} className="w-20"
-                                onChange={(e) => setRecibir({ ...recibir, [r.id]: { ...v, cantidad: e.target.value } })} />
-                              <Input placeholder="Lote" value={v.lote} className="w-24"
-                                onChange={(e) => setRecibir({ ...recibir, [r.id]: { ...v, lote: e.target.value } })} />
-                              <Input type="date" value={v.caducidad} className="w-36"
-                                onChange={(e) => setRecibir({ ...recibir, [r.id]: { ...v, caducidad: e.target.value } })} />
+                            <div className="space-y-1">
+                              {lotes.map((l, i) => (
+                                <div key={i} className="flex flex-wrap gap-1 items-center">
+                                  <Input type="number" placeholder="Cant." value={l.cantidad} className="w-20"
+                                    onChange={(e) => setLote(r.id, i, { cantidad: e.target.value })} />
+                                  <Input placeholder="Lote" value={l.lote} className="w-24"
+                                    onChange={(e) => setLote(r.id, i, { lote: e.target.value })} />
+                                  <Input type="date" value={l.caducidad} className="w-36"
+                                    onChange={(e) => setLote(r.id, i, { caducidad: e.target.value })} />
+                                  {lotes.length > 1 && (
+                                    <Button size="sm" variant="outline" onClick={() => rmLote(r.id, i)}>×</Button>
+                                  )}
+                                </div>
+                              ))}
+                              <div className="flex items-center gap-2 text-xs">
+                                <Button size="sm" variant="outline" onClick={() => addLote(r.id)}>+ lote</Button>
+                                <span className={totalLotes > pendiente ? 'text-red-600' : 'text-gray-400'}>
+                                  {totalLotes} / {pendiente} pendiente
+                                </span>
+                              </div>
                             </div>
                           ) : <span className="text-xs text-green-600">Completo</span>}
                         </td>
@@ -987,7 +1107,7 @@ function PedidoDetalleDialog({ id, onClose, onCambio }: { id: string; onClose: (
                 })}
               </tbody>
             </table>
-            {pedido.notas && <p className="text-sm text-gray-500">Notas: {pedido.notas}</p>}
+            {pedido.notas && <p className="text-sm text-red-600">Notas: {pedido.notas}</p>}
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
         )}
