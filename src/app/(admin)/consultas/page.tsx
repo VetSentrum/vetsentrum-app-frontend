@@ -101,6 +101,13 @@ export default function ConsultasPage() {
       .catch(() => setUsuario(null))
   }, [])
 
+  const [ventasActivo, setVentasActivo] = useState(false)
+  useEffect(() => {
+    axios.get<{ config: Record<string, boolean> }>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/empresa/modulos`)
+      .then(({ data }) => setVentasActivo(data.config?.ventas ?? false))
+      .catch(() => {})
+  }, [])
+
   const abrirModal = (consulta: Consulta | null) => {
     setConsultaSeleccionada(consulta as ConsultaFormData | null)
     setModalAbierto(true)
@@ -316,6 +323,11 @@ export default function ConsultasPage() {
                       )}
                       {usuario?.rol === 'admin' && (
                         <Button variant="destructive" size="sm" onClick={() => eliminarConsulta(consulta.id)}>Eliminar</Button>
+                      )}
+                      {ventasActivo && (usuario?.rol === 'admin' || usuario?.rol === 'recepcion') && (
+                        <a href={`/ventas?consulta=${consulta.id}`}>
+                          <Button variant="outline" size="sm">Cobrar</Button>
+                        </a>
                       )}
                     </div>
                     {/* Grupo Receta */}

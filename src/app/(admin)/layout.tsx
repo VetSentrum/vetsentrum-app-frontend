@@ -93,6 +93,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <a href="/inventario" className="p-3 rounded-lg hover:bg-gray-800">Inventario</a>
           )}
 
+          {/* Ventas — módulo activable, solo admin y recepción */}
+          {modulos.ventas && (user.rol === "admin" || user.rol === "recepcion") && (
+            <a href="/ventas" className="p-3 rounded-lg hover:bg-gray-800">Ventas</a>
+          )}
+
           {/* Visible para admin y veterinario */}
           {(user.rol === "admin" || user.rol === "veterinario") && (
             <Link href="/consultas" className="p-3 rounded-lg hover:bg-gray-800">Consultas</Link>
